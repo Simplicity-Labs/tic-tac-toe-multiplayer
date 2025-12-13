@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const TURN_DURATION = 10 // seconds
+const TURN_DURATION = 30 // seconds
 
 export function useTimer(turnStartedAt, isActive, onTimeout) {
   const [timeRemaining, setTimeRemaining] = useState(TURN_DURATION)

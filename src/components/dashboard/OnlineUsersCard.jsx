@@ -1,4 +1,4 @@
-import { Users, UserPlus, Loader2 } from 'lucide-react'
+import { Users, UserPlus, Loader2, Gamepad2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Avatar, AvatarFallback } from '../ui/Avatar'
@@ -49,6 +49,7 @@ export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite
             {otherUsers.map((onlineUser) => {
               const isInviting = sentInvite?.to?.id === onlineUser.id
               const wasDeclined = isInviting && sentInvite?.declined
+              const isInGame = !!onlineUser.current_game_id
 
               return (
                 <div
@@ -57,23 +58,30 @@ export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite
                 >
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                      <AvatarFallback className={`text-xs ${isInGame ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'}`}>
                         {onlineUser.username?.slice(0, 2).toUpperCase() || '??'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium">{onlineUser.username}</p>
-                      <p className="text-xs text-emerald-500 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1" />
-                        Online
-                      </p>
+                      {isInGame ? (
+                        <p className="text-xs text-amber-500 flex items-center">
+                          <Gamepad2 className="w-3 h-3 mr-1" />
+                          In Game
+                        </p>
+                      ) : (
+                        <p className="text-xs text-emerald-500 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1" />
+                          Online
+                        </p>
+                      )}
                     </div>
                   </div>
                   <Button
                     size="sm"
                     variant={wasDeclined ? 'destructive' : 'outline'}
                     onClick={() => onInvite(onlineUser)}
-                    disabled={disabled || (isInviting && !wasDeclined)}
+                    disabled={disabled || isInGame || (isInviting && !wasDeclined)}
                     className="h-8"
                   >
                     {isInviting && !wasDeclined ? (
@@ -83,6 +91,8 @@ export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite
                       </>
                     ) : wasDeclined ? (
                       'Declined'
+                    ) : isInGame ? (
+                      'In Game'
                     ) : (
                       <>
                         <UserPlus className="h-3 w-3 mr-1" />

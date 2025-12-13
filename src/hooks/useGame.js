@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -18,52 +18,64 @@ export function useGame(gameId) {
   const [error, setError] = useState(null)
   const [playerX, setPlayerX] = useState(null)
   const [playerO, setPlayerO] = useState(null)
+  const fetchedGameIdRef = useRef(null)
+  const playerOIdRef = useRef(null)
 
-  // Fetch game data
-  const fetchGame = useCallback(async () => {
-    if (!gameId) return
-
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      setGame(data)
-
-      // Fetch player profiles
-      if (data.player_x) {
-        const { data: xProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.player_x)
-          .single()
-        setPlayerX(xProfile)
-      }
-
-      if (data.player_o) {
-        const { data: oProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.player_o)
-          .single()
-        setPlayerO(oProfile)
-      }
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [gameId])
-
-  // Subscribe to game updates
+  // Fetch game and subscribe to updates
   useEffect(() => {
     if (!gameId) return
 
-    fetchGame()
+    // Reset state when gameId changes
+    if (fetchedGameIdRef.current !== gameId) {
+      setGame(null)
+      setPlayerX(null)
+      setPlayerO(null)
+      setLoading(true)
+      setError(null)
+      playerOIdRef.current = null
+    }
+
+    fetchedGameIdRef.current = gameId
+
+    const fetchGameData = async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('games')
+          .select('*')
+          .eq('id', gameId)
+          .single()
+
+        if (fetchError) throw fetchError
+        setGame(data)
+
+        // Fetch player X profile
+        if (data.player_x) {
+          const { data: xProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.player_x)
+            .maybeSingle()
+          if (xProfile) setPlayerX(xProfile)
+        }
+
+        // Fetch player O profile if present
+        if (data.player_o && playerOIdRef.current !== data.player_o) {
+          playerOIdRef.current = data.player_o
+          const { data: oProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.player_o)
+            .maybeSingle()
+          if (oProfile) setPlayerO(oProfile)
+        }
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchGameData()
 
     const channel = supabase
       .channel(`game:${gameId}`)
@@ -79,22 +91,15 @@ export function useGame(gameId) {
           if (payload.new) {
             setGame(payload.new)
 
-            // Fetch player O profile if it just joined
-            if (payload.new.player_o) {
-              setPlayerO((currentPlayerO) => {
-                // Only fetch if we don't have the profile yet
-                if (!currentPlayerO) {
-                  supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', payload.new.player_o)
-                    .single()
-                    .then(({ data: oProfile }) => {
-                      if (oProfile) setPlayerO(oProfile)
-                    })
-                }
-                return currentPlayerO
-              })
+            // Fetch player O profile if they just joined
+            if (payload.new.player_o && playerOIdRef.current !== payload.new.player_o) {
+              playerOIdRef.current = payload.new.player_o
+              const { data: oProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', payload.new.player_o)
+                .maybeSingle()
+              if (oProfile) setPlayerO(oProfile)
             }
           }
         }
@@ -104,7 +109,7 @@ export function useGame(gameId) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [gameId, fetchGame])
+  }, [gameId])
 
   // Make a move
   const makeMove = useCallback(
@@ -496,7 +501,6 @@ export function useGame(gameId) {
     forfeit,
     getPlayerSymbol,
     isMyTurn,
-    refetch: fetchGame,
   }
 }
 
@@ -721,6 +725,106 @@ export function useAvailableGames() {
       .subscribe((status) => {
         console.log('Available games channel status:', status)
       })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [fetchGames, user])
+
+  return { games, loading, refetch: fetchGames }
+}
+
+// Hook to fetch live (in-progress) games for spectating
+export function useLiveGames() {
+  const { user } = useAuth()
+  const [games, setGames] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchGames = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select(`
+          *,
+          player_x_profile:profiles!games_player_x_fkey(id, username),
+          player_o_profile:profiles!games_player_o_fkey(id, username)
+        `)
+        .eq('status', 'in_progress')
+        .eq('is_ai_game', false)
+        .neq('player_x', user.id)
+        .neq('player_o', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setGames(data || [])
+    } catch (err) {
+      console.error('Error fetching live games:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+
+    fetchGames()
+
+    // Subscribe to game changes
+    const channel = supabase
+      .channel('live-games')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'games',
+        },
+        (payload) => {
+          // New game started that we're not part of
+          if (
+            payload.new.status === 'in_progress' &&
+            !payload.new.is_ai_game &&
+            payload.new.player_x !== user.id &&
+            payload.new.player_o !== user.id
+          ) {
+            fetchGames()
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+        },
+        (payload) => {
+          // Game status changed or move made
+          if (!payload.new.is_ai_game && payload.new.player_x !== user.id && payload.new.player_o !== user.id) {
+            if (payload.new.status === 'in_progress') {
+              // Game started or updated - refetch to get profiles
+              fetchGames()
+            } else if (payload.new.status === 'completed') {
+              // Game ended - remove from list
+              setGames((prev) => prev.filter((g) => g.id !== payload.new.id))
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'games',
+        },
+        (payload) => {
+          setGames((prev) => prev.filter((g) => g.id !== payload.old.id))
+        }
+      )
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)

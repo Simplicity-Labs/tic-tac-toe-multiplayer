@@ -3,22 +3,36 @@ import { Trophy, Frown, Handshake, Home, RotateCcw } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
 
-export function WinOverlay({ game, currentUserId, onPlayAgain }) {
+export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO }) {
   const navigate = useNavigate()
 
   if (game?.status !== 'completed') return null
 
+  const isPlayer = currentUserId === game.player_x || currentUserId === game.player_o
   const isWinner = game.winner === currentUserId
   const isDraw = game.winner === null
   const isAIWin = game.winner === 'ai'
+  const isSpectator = !isPlayer
+
+  // Get winner info for spectators
+  const winnerIsX = game.winner === game.player_x
+  const winnerName = winnerIsX ? playerX?.username : playerO?.username
 
   let title, subtitle, Icon, colorClass
 
   if (isDraw) {
     title = "It's a Draw!"
-    subtitle = "Great match! Neither player could claim victory."
+    subtitle = isSpectator
+      ? "Neither player could claim victory."
+      : "Great match! Neither player could claim victory."
     Icon = Handshake
     colorClass = 'text-amber-500'
+  } else if (isSpectator) {
+    // Spectator view - show who won
+    title = `${winnerName || (winnerIsX ? 'X' : 'O')} Wins!`
+    subtitle = `${winnerIsX ? 'X' : 'O'} claimed victory in this match.`
+    Icon = Trophy
+    colorClass = 'text-emerald-500'
   } else if (isWinner) {
     title = 'Victory!'
     subtitle = 'Congratulations! You won the game!'

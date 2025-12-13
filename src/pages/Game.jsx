@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Share2, Flag, X } from 'lucide-react'
+import { ArrowLeft, Share2, Flag, X, Eye } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useInvitations } from '../context/InvitationsContext'
+import { usePresence } from '../hooks/usePresence'
 import { useGame, useCreateGame } from '../hooks/useGame'
 import { useTimer } from '../hooks/useTimer'
 import { useToast } from '../components/ui/Toast'
@@ -17,6 +18,7 @@ export default function Game() {
   const navigate = useNavigate()
   const { user, refreshProfile } = useAuth()
   const { sentInvite } = useInvitations()
+  const { setCurrentGame } = usePresence()
   const { toast } = useToast()
   const { createGame } = useCreateGame()
   const [showForfeitModal, setShowForfeitModal] = useState(false)
@@ -40,6 +42,30 @@ export default function Game() {
   // Check if game is active (can be forfeited)
   const isGameActive = game?.status === 'in_progress' || game?.status === 'waiting'
   const isPlayer = game && user && (game.player_x === user.id || game.player_o === user.id)
+
+  // Update presence when entering/leaving a game
+  const inGameRef = useRef(false)
+  useEffect(() => {
+    const shouldBeInGame = isPlayer && isGameActive
+
+    // Only update if state actually changed
+    if (shouldBeInGame && !inGameRef.current) {
+      inGameRef.current = true
+      setCurrentGame(gameId)
+    } else if (!shouldBeInGame && inGameRef.current) {
+      inGameRef.current = false
+      setCurrentGame(null)
+    }
+  }, [isPlayer, isGameActive, gameId, setCurrentGame])
+
+  // Clear presence on unmount
+  useEffect(() => {
+    return () => {
+      if (inGameRef.current) {
+        setCurrentGame(null)
+      }
+    }
+  }, [setCurrentGame])
 
   // Show overlay if invite was declined
   useEffect(() => {
@@ -261,12 +287,19 @@ export default function Game() {
 
       {/* Game info */}
       {game.status === 'in_progress' && (
-        <p className="text-center text-sm text-slate-500">
-          You are playing as{' '}
-          <span className={currentPlayer === 'X' ? 'text-primary-500 font-semibold' : 'text-rose-500 font-semibold'}>
-            {currentPlayer}
-          </span>
-        </p>
+        isPlayer ? (
+          <p className="text-center text-sm text-slate-500">
+            You are playing as{' '}
+            <span className={currentPlayer === 'X' ? 'text-primary-500 font-semibold' : 'text-rose-500 font-semibold'}>
+              {currentPlayer}
+            </span>
+          </p>
+        ) : (
+          <p className="text-center text-sm text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
+            <Eye className="h-4 w-4" />
+            You are spectating this game
+          </p>
+        )
       )}
 
       {/* Win overlay */}
@@ -274,6 +307,8 @@ export default function Game() {
         game={game}
         currentUserId={user?.id}
         onPlayAgain={handlePlayAgain}
+        playerX={playerX}
+        playerO={playerO}
       />
 
       {/* Game closed overlay (invite declined, game deleted, etc.) */}

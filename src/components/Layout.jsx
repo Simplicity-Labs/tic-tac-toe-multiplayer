@@ -13,7 +13,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { cn } from '../lib/utils'
 
 export default function Layout() {
-  const { profile, signOut, isAnonymous, linkEmailToAnonymous } = useAuth()
+  const { user, profile, signOut, isAnonymous, linkEmailToAnonymous } = useAuth()
   const { pendingInvite, sentInvite, acceptInvite, declineInvite } = useInvitations()
   const { toast } = useToast()
   const location = useLocation()
@@ -160,6 +160,11 @@ export default function Layout() {
                           </span>
                         )}
                       </p>
+                      {user?.email && (
+                        <p className="text-xs text-slate-500 truncate max-w-[180px]">
+                          {user.email}
+                        </p>
+                      )}
                       <p className="text-xs text-slate-500">
                         {profile?.wins || 0}W / {profile?.losses || 0}L / {profile?.draws || 0}D
                       </p>

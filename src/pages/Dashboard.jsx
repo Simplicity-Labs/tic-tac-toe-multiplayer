@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useAvailableGames, useCreateGame, useJoinGame, useActiveGame } from '../hooks/useGame'
+import { useAvailableGames, useLiveGames, useCreateGame, useJoinGame, useActiveGame } from '../hooks/useGame'
 import { usePresence } from '../hooks/usePresence'
 import { useInvitations } from '../context/InvitationsContext'
 import { useToast } from '../components/ui/Toast'
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { StatsCard } from '../components/dashboard/StatsCard'
 import { GameList } from '../components/dashboard/GameList'
+import { LiveGameList } from '../components/dashboard/LiveGameList'
 import { OnlineUsersCard } from '../components/dashboard/OnlineUsersCard'
 import { cn } from '../lib/utils'
 
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { games, loading: gamesLoading, refetch } = useAvailableGames()
+  const { games: liveGames, loading: liveGamesLoading, refetch: refetchLiveGames } = useLiveGames()
   const { createGame, loading: createLoading } = useCreateGame()
   const { joinGame, loading: joinLoading } = useJoinGame()
   const { activeGame, refetch: refetchActiveGame } = useActiveGame()
@@ -271,6 +273,13 @@ export default function Dashboard() {
         onJoin={handleJoinGame}
         joinLoading={joinLoading}
         onRefresh={refetch}
+      />
+
+      {/* Live games to spectate */}
+      <LiveGameList
+        games={liveGames}
+        loading={liveGamesLoading}
+        onRefresh={refetchLiveGames}
       />
     </div>
   )
