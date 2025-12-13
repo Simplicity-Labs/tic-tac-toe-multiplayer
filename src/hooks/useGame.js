@@ -520,10 +520,9 @@ export function useActiveGame() {
         .in('status', ['waiting', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, which is fine
+      if (error) {
         console.error('Error fetching active game:', error)
       }
 
@@ -555,7 +554,7 @@ export function useCreateGame() {
       .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
       .in('status', ['waiting', 'in_progress'])
       .limit(1)
-      .single()
+      .maybeSingle()
 
     return data
   }

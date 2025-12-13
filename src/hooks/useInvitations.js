@@ -168,6 +168,9 @@ export function useInvitations() {
 
     clearTimeout(timeoutRef.current)
 
+    // Delete the game since invite was declined
+    await supabase.from('games').delete().eq('id', pendingInvite.gameId)
+
     // Notify the sender that we declined
     const senderChannel = supabase.channel(`invites:${pendingInvite.from.id}`)
     await senderChannel.subscribe()
