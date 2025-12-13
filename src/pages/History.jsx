@@ -1,10 +1,11 @@
-import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, User } from 'lucide-react'
+import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, User, Grid3X3 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGameHistory } from '../hooks/useGame'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Avatar, AvatarFallback } from '../components/ui/Avatar'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../lib/utils'
+import { getBoardSize, BOARD_SIZES } from '../lib/gameLogic'
 
 export default function History() {
   const { user } = useAuth()
@@ -65,6 +66,8 @@ export default function History() {
           {games.map((game) => {
             const outcome = getOutcome(game)
             const opponent = getOpponent(game)
+            const boardSize = game.board_size || getBoardSize(game.board)
+            const boardConfig = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
 
             return (
               <Card key={game.id} className="hover:shadow-md transition-shadow">
@@ -109,8 +112,14 @@ export default function History() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {/* Badge */}
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      {/* Board size badge */}
+                      <Badge variant="outline" className="gap-1 hidden sm:flex">
+                        <Grid3X3 className="h-3 w-3" />
+                        {boardConfig.label}
+                      </Badge>
+
+                      {/* Outcome Badge */}
                       <Badge
                         variant={
                           outcome === 'win'
@@ -132,10 +141,16 @@ export default function History() {
 
                   {/* Mini board preview */}
                   <div className="mt-3 flex items-center gap-4">
-                    <MiniBoard board={game.board} />
-                    <span className="text-xs text-slate-400 sm:hidden">
-                      {formatDate(game.completed_at)}
-                    </span>
+                    <MiniBoard board={game.board} boardSize={boardSize} />
+                    <div className="flex flex-col gap-1 sm:hidden">
+                      <Badge variant="outline" className="gap-1 w-fit">
+                        <Grid3X3 className="h-3 w-3" />
+                        {boardConfig.label}
+                      </Badge>
+                      <span className="text-xs text-slate-400">
+                        {formatDate(game.completed_at)}
+                      </span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -147,17 +162,27 @@ export default function History() {
   )
 }
 
-function MiniBoard({ board }) {
+function MiniBoard({ board, boardSize = 3 }) {
   return (
-    <div className="grid grid-cols-3 gap-0.5 w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded p-0.5">
+    <div
+      className={cn(
+        'grid gap-0.5 bg-slate-200 dark:bg-slate-700 rounded p-0.5',
+        boardSize === 3 && 'grid-cols-3 w-12 h-12',
+        boardSize === 4 && 'grid-cols-4 w-14 h-14',
+        boardSize === 5 && 'grid-cols-5 w-16 h-16'
+      )}
+    >
       {board.map((cell, i) => (
         <div
           key={i}
           className={cn(
-            'flex items-center justify-center text-[8px] font-bold rounded-sm',
+            'flex items-center justify-center font-bold rounded-sm',
             'bg-white dark:bg-slate-800',
             cell === 'X' && 'text-primary-500',
-            cell === 'O' && 'text-rose-500'
+            cell === 'O' && 'text-rose-500',
+            boardSize === 3 && 'text-[8px]',
+            boardSize === 4 && 'text-[6px]',
+            boardSize === 5 && 'text-[5px]'
           )}
         >
           {cell}

@@ -11,6 +11,13 @@ const SETTINGS_STORAGE_KEY = 'tic-tac-toe-settings'
 // Check if it's December
 const isDecember = () => new Date().getMonth() === 11
 
+// Board size options
+export const BOARD_SIZE_OPTIONS = [
+  { size: 3, label: '3x3', description: 'Classic - 3 in a row to win' },
+  { size: 4, label: '4x4', description: 'Extended - 3 in a row to win' },
+  { size: 5, label: '5x5', description: 'Large - 4 in a row to win' },
+]
+
 // Symbol theme definitions
 export const SYMBOL_THEMES = {
   classic: {
@@ -104,14 +111,32 @@ export function SettingsProvider({ children }) {
     return 'classic'
   })
 
+  const [boardSize, setBoardSizeState] = useState(() => {
+    const stored = getStoredSettings()
+    if (stored?.boardSize && [3, 4, 5].includes(stored.boardSize)) {
+      return stored.boardSize
+    }
+    return 3
+  })
+
   const setSymbolTheme = (themeId) => {
     if (SYMBOL_THEMES[themeId]) {
       setSymbolThemeState(themeId)
-      storeSettings({ symbolTheme: themeId })
+      const stored = getStoredSettings() || {}
+      storeSettings({ ...stored, symbolTheme: themeId })
+    }
+  }
+
+  const setBoardSize = (size) => {
+    if ([3, 4, 5].includes(size)) {
+      setBoardSizeState(size)
+      const stored = getStoredSettings() || {}
+      storeSettings({ ...stored, boardSize: size })
     }
   }
 
   const currentTheme = SYMBOL_THEMES[symbolTheme] || SYMBOL_THEMES.classic
+  const currentBoardSizeOption = BOARD_SIZE_OPTIONS.find(o => o.size === boardSize) || BOARD_SIZE_OPTIONS[0]
 
   const value = {
     symbolTheme,
@@ -119,6 +144,10 @@ export function SettingsProvider({ children }) {
     currentTheme,
     availableThemes: getAvailableThemes(),
     isChristmasSeason: isDecember(),
+    boardSize,
+    setBoardSize,
+    currentBoardSizeOption,
+    boardSizeOptions: BOARD_SIZE_OPTIONS,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

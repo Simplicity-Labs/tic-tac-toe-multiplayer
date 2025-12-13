@@ -1,4 +1,11 @@
-// Winning combinations (indices of the board array)
+// Board size configurations
+export const BOARD_SIZES = {
+  3: { size: 3, winLength: 3, label: '3x3', description: 'Classic' },
+  4: { size: 4, winLength: 3, label: '4x4', description: '3 in a row' },
+  5: { size: 5, winLength: 4, label: '5x5', description: '4 in a row' },
+}
+
+// Legacy 3x3 winning combinations for backwards compatibility
 export const WINNING_COMBINATIONS = [
   [0, 1, 2], // Top row
   [3, 4, 5], // Middle row
@@ -10,13 +17,84 @@ export const WINNING_COMBINATIONS = [
   [2, 4, 6], // Diagonal top-right to bottom-left
 ]
 
+// Generate winning combinations for any board size
+export function getWinningCombinations(boardSize = 3) {
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  const { size, winLength } = config
+  const combinations = []
+
+  // Helper to get index from row, col
+  const getIndex = (row, col) => row * size + col
+
+  // Horizontal wins
+  for (let row = 0; row < size; row++) {
+    for (let startCol = 0; startCol <= size - winLength; startCol++) {
+      const combo = []
+      for (let i = 0; i < winLength; i++) {
+        combo.push(getIndex(row, startCol + i))
+      }
+      combinations.push(combo)
+    }
+  }
+
+  // Vertical wins
+  for (let col = 0; col < size; col++) {
+    for (let startRow = 0; startRow <= size - winLength; startRow++) {
+      const combo = []
+      for (let i = 0; i < winLength; i++) {
+        combo.push(getIndex(startRow + i, col))
+      }
+      combinations.push(combo)
+    }
+  }
+
+  // Diagonal wins (top-left to bottom-right)
+  for (let startRow = 0; startRow <= size - winLength; startRow++) {
+    for (let startCol = 0; startCol <= size - winLength; startCol++) {
+      const combo = []
+      for (let i = 0; i < winLength; i++) {
+        combo.push(getIndex(startRow + i, startCol + i))
+      }
+      combinations.push(combo)
+    }
+  }
+
+  // Diagonal wins (top-right to bottom-left)
+  for (let startRow = 0; startRow <= size - winLength; startRow++) {
+    for (let startCol = winLength - 1; startCol < size; startCol++) {
+      const combo = []
+      for (let i = 0; i < winLength; i++) {
+        combo.push(getIndex(startRow + i, startCol - i))
+      }
+      combinations.push(combo)
+    }
+  }
+
+  return combinations
+}
+
+// Get board size from board array length
+export function getBoardSize(board) {
+  if (!board) return 3
+  const length = board.length
+  if (length === 9) return 3
+  if (length === 16) return 4
+  if (length === 25) return 5
+  return 3
+}
+
 // Check if there's a winner
 export function checkWinner(board) {
-  for (const [a, b, c] of WINNING_COMBINATIONS) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+  const boardSize = getBoardSize(board)
+  const combinations = getWinningCombinations(boardSize)
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+
+  for (const combo of combinations) {
+    const first = board[combo[0]]
+    if (first && combo.every(idx => board[idx] === first)) {
       return {
-        winner: board[a],
-        line: [a, b, c],
+        winner: first,
+        line: combo,
       }
     }
   }
@@ -110,6 +188,7 @@ export function getRandomMove(board) {
 // Medium AI - mix of smart and random moves
 export function getMediumMove(board) {
   const available = getAvailableMoves(board)
+  const boardSize = getBoardSize(board)
 
   // 60% chance to make a smart move, 40% random
   if (Math.random() < 0.6) {
@@ -127,17 +206,24 @@ export function getMediumMove(board) {
       if (checkWinner(testBoard)) return move
     }
 
-    // Take center if available
-    if (isEmpty(board[4])) return 4
+    // Take center if available (works for odd-sized boards)
+    const center = Math.floor(board.length / 2)
+    if (boardSize % 2 === 1 && isEmpty(board[center])) return center
 
     // Take a corner
-    const corners = [0, 2, 6, 8].filter(i => isEmpty(board[i]))
+    const corners = getCorners(boardSize).filter(i => isEmpty(board[i]))
     if (corners.length > 0) {
       return corners[Math.floor(Math.random() * corners.length)]
     }
   }
 
   return getRandomMove(board)
+}
+
+// Get corner indices for a board
+function getCorners(boardSize) {
+  const size = boardSize
+  return [0, size - 1, size * (size - 1), size * size - 1]
 }
 
 // Get AI move based on difficulty
@@ -154,8 +240,9 @@ export function getAIMove(board, difficulty = 'hard') {
 }
 
 // Create an empty board
-export function createEmptyBoard() {
-  return Array(9).fill('')
+export function createEmptyBoard(boardSize = 3) {
+  const size = boardSize * boardSize
+  return Array(size).fill('')
 }
 
 // Format time remaining for display

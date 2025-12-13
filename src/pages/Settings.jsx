@@ -1,10 +1,18 @@
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle } from 'lucide-react'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3 } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { cn } from '../lib/utils'
 
 export default function Settings() {
-  const { symbolTheme, setSymbolTheme, availableThemes, isChristmasSeason } = useSettings()
+  const {
+    symbolTheme,
+    setSymbolTheme,
+    availableThemes,
+    isChristmasSeason,
+    boardSize,
+    setBoardSize,
+    boardSizeOptions,
+  } = useSettings()
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -89,6 +97,75 @@ export default function Settings() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Grid3X3 className="h-5 w-5" />
+            Default Board Size
+          </h2>
+          <p className="text-sm text-slate-500">Choose the default grid size for new games</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {boardSizeOptions.map((option) => {
+              const isSelected = boardSize === option.size
+
+              return (
+                <button
+                  key={option.size}
+                  onClick={() => setBoardSize(option.size)}
+                  className={cn(
+                    'relative p-4 rounded-xl border-2 transition-all text-center',
+                    isSelected
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                  )}
+                >
+                  {isSelected && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="h-4 w-4 text-primary-500" />
+                    </div>
+                  )}
+
+                  {/* Grid Preview */}
+                  <div className="flex justify-center mb-3">
+                    <MiniGridPreview size={option.size} />
+                  </div>
+
+                  <p className="font-bold text-lg">{option.label}</p>
+                  <p className="text-xs text-slate-500">{option.description}</p>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-sm text-slate-500 mt-4 text-center">
+            You can also choose a different size when creating each game.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function MiniGridPreview({ size }) {
+  return (
+    <div
+      className={cn(
+        'grid gap-0.5 bg-slate-200 dark:bg-slate-700 rounded p-0.5',
+        size === 3 && 'grid-cols-3 w-10 h-10',
+        size === 4 && 'grid-cols-4 w-12 h-12',
+        size === 5 && 'grid-cols-5 w-14 h-14'
+      )}
+    >
+      {Array(size * size)
+        .fill(null)
+        .map((_, i) => (
+          <div
+            key={i}
+            className="bg-white dark:bg-slate-800 rounded-sm"
+          />
+        ))}
     </div>
   )
 }

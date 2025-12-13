@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
-import { X, Gamepad2, Check, Loader2 } from 'lucide-react'
+import { X, Gamepad2, Check, Loader2, Grid3X3 } from 'lucide-react'
 import { Button } from './ui/Button'
 import { Avatar, AvatarFallback } from './ui/Avatar'
+import { Badge } from './ui/Badge'
+import { BOARD_SIZES } from '../lib/gameLogic'
 
 const INVITE_TIMEOUT = 30000 // 30 seconds
 
 export function InviteNotification({ invite, onAccept, onDecline }) {
+  const boardSize = invite?.boardSize || 3
+  const boardConfig = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
   const [timeLeft, setTimeLeft] = useState(30)
   const [isAccepting, setIsAccepting] = useState(false)
 
@@ -72,6 +76,10 @@ export function InviteNotification({ invite, onAccept, onDecline }) {
           <div>
             <p className="font-semibold">{invite.from.username}</p>
             <p className="text-sm text-slate-500">wants to play Tic Tac Toe!</p>
+            <Badge variant="outline" className="mt-1 gap-1">
+              <Grid3X3 className="h-3 w-3" />
+              {boardConfig.label}
+            </Badge>
           </div>
         </div>
 

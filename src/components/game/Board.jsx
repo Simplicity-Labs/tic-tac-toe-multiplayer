@@ -1,6 +1,6 @@
 import { cn } from '../../lib/utils'
 import { Cell } from './Cell'
-import { checkWinner, isEmpty } from '../../lib/gameLogic'
+import { checkWinner, isEmpty, getBoardSize } from '../../lib/gameLogic'
 
 export function Board({ board, onCellClick, disabled, currentPlayer }) {
   // Guard against undefined/null board (e.g., when game is deleted)
@@ -8,11 +8,19 @@ export function Board({ board, onCellClick, disabled, currentPlayer }) {
     return null
   }
 
+  const boardSize = getBoardSize(board)
   const winResult = checkWinner(board)
 
   return (
     <div className="relative">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+      <div
+        className={cn(
+          'grid gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl',
+          boardSize === 3 && 'grid-cols-3',
+          boardSize === 4 && 'grid-cols-4',
+          boardSize === 5 && 'grid-cols-5'
+        )}
+      >
         {board.map((cell, index) => (
           <Cell
             key={index}
@@ -21,35 +29,35 @@ export function Board({ board, onCellClick, disabled, currentPlayer }) {
             disabled={disabled || !isEmpty(cell)}
             isWinningCell={winResult?.line?.includes(index)}
             currentPlayer={currentPlayer}
+            boardSize={boardSize}
           />
         ))}
       </div>
 
       {/* Win line overlay */}
       {winResult && (
-        <WinLine line={winResult.line} />
+        <WinLine line={winResult.line} boardSize={boardSize} />
       )}
     </div>
   )
 }
 
-function WinLine({ line }) {
+function WinLine({ line, boardSize }) {
   const getLineCoordinates = () => {
-    const cellSize = 100 / 3
-    const positions = {
-      0: { x: cellSize / 2, y: cellSize / 2 },
-      1: { x: cellSize * 1.5, y: cellSize / 2 },
-      2: { x: cellSize * 2.5, y: cellSize / 2 },
-      3: { x: cellSize / 2, y: cellSize * 1.5 },
-      4: { x: cellSize * 1.5, y: cellSize * 1.5 },
-      5: { x: cellSize * 2.5, y: cellSize * 1.5 },
-      6: { x: cellSize / 2, y: cellSize * 2.5 },
-      7: { x: cellSize * 1.5, y: cellSize * 2.5 },
-      8: { x: cellSize * 2.5, y: cellSize * 2.5 },
+    const cellSize = 100 / boardSize
+
+    // Generate positions dynamically based on board size
+    const getPosition = (index) => {
+      const row = Math.floor(index / boardSize)
+      const col = index % boardSize
+      return {
+        x: cellSize * (col + 0.5),
+        y: cellSize * (row + 0.5),
+      }
     }
 
-    const start = positions[line[0]]
-    const end = positions[line[2]]
+    const start = getPosition(line[0])
+    const end = getPosition(line[line.length - 1])
 
     return { x1: start.x, y1: start.y, x2: end.x, y2: end.y }
   }

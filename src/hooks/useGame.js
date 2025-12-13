@@ -563,7 +563,7 @@ export function useCreateGame() {
     return data
   }
 
-  const createGame = async (isAI = false, aiDifficulty = 'hard') => {
+  const createGame = async (isAI = false, aiDifficulty = 'hard', boardSize = 3) => {
     if (!user) return { error: 'Not authenticated' }
 
     setLoading(true)
@@ -580,12 +580,13 @@ export function useCreateGame() {
         .insert({
           player_x: user.id,
           player_o: isAI ? null : null,
-          board: createEmptyBoard(),
+          board: createEmptyBoard(boardSize),
           current_turn: user.id,
           status: isAI ? 'in_progress' : 'waiting',
           is_ai_game: isAI,
           ai_difficulty: isAI ? aiDifficulty : null,
           turn_started_at: new Date().toISOString(),
+          board_size: boardSize,
         })
         .select()
         .single()

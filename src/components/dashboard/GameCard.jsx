@@ -1,11 +1,14 @@
-import { User, Clock } from 'lucide-react'
+import { User, Clock, Grid3X3 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Avatar, AvatarFallback } from '../ui/Avatar'
 import { Badge } from '../ui/Badge'
+import { getBoardSize, BOARD_SIZES } from '../../lib/gameLogic'
 
 export function GameCard({ game, onJoin, loading }) {
   const creator = game.creator
+  const boardSize = game.board_size || getBoardSize(game.board)
+  const boardConfig = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
 
   const getTimeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000)
@@ -36,6 +39,10 @@ export function GameCard({ game, onJoin, loading }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Badge variant="outline" className="gap-1">
+              <Grid3X3 className="h-3 w-3" />
+              {boardConfig.label}
+            </Badge>
             <Badge variant="secondary">Waiting</Badge>
             <Button
               size="sm"

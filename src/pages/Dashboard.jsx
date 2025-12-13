@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock } from 'lucide-react'
+import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock, Grid3X3 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAvailableGames, useLiveGames, useCreateGame, useJoinGame, useActiveGame } from '../hooks/useGame'
 import { usePresence } from '../hooks/usePresence'
 import { useInvitations } from '../context/InvitationsContext'
+import { useSettings } from '../context/SettingsContext'
 import { useToast } from '../components/ui/Toast'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
@@ -13,6 +15,7 @@ import { GameList } from '../components/dashboard/GameList'
 import { LiveGameList } from '../components/dashboard/LiveGameList'
 import { OnlineUsersCard } from '../components/dashboard/OnlineUsersCard'
 import { cn } from '../lib/utils'
+import { BOARD_SIZES } from '../lib/gameLogic'
 
 const DIFFICULTIES = [
   {
@@ -54,10 +57,12 @@ export default function Dashboard() {
   const { activeGame, refetch: refetchActiveGame } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
+  const { boardSize: defaultBoardSize } = useSettings()
   const { toast } = useToast()
+  const [selectedBoardSize, setSelectedBoardSize] = useState(defaultBoardSize)
 
   const handleCreateGame = async () => {
-    const { data, error, existingGameId } = await createGame(false)
+    const { data, error, existingGameId } = await createGame(false, 'hard', selectedBoardSize)
     if (error) {
       if (existingGameId) {
         toast({
@@ -76,7 +81,7 @@ export default function Dashboard() {
     } else {
       toast({
         title: 'Game created!',
-        description: 'Waiting for an opponent to join...',
+        description: `${BOARD_SIZES[selectedBoardSize].label} game - Waiting for an opponent...`,
         variant: 'success',
       })
       navigate(`/game/${data.id}`)
@@ -84,7 +89,7 @@ export default function Dashboard() {
   }
 
   const handlePlayAI = async (difficulty) => {
-    const { data, error, existingGameId } = await createGame(true, difficulty)
+    const { data, error, existingGameId } = await createGame(true, difficulty, selectedBoardSize)
     if (error) {
       if (existingGameId) {
         toast({
@@ -120,7 +125,7 @@ export default function Dashboard() {
   }
 
   const handleInvite = async (targetUser) => {
-    const { data, error } = await sendInvite(targetUser)
+    const { data, error } = await sendInvite(targetUser, selectedBoardSize)
     if (error) {
       toast({
         title: 'Error',
@@ -130,7 +135,7 @@ export default function Dashboard() {
     } else {
       toast({
         title: 'Invite sent!',
-        description: `Waiting for ${targetUser.username} to respond...`,
+        description: `${BOARD_SIZES[selectedBoardSize].label} game - Waiting for ${targetUser.username}...`,
         variant: 'success',
       })
       navigate(`/game/${data.id}`)
@@ -189,20 +194,48 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={handleCreateGame}>
+          <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center group-hover:bg-primary-500 group-hover:text-white transition-colors">
-                  <Plus className="h-5 w-5 text-primary-500 group-hover:text-white" />
+                <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+                  <Plus className="h-5 w-5 text-primary-500" />
                 </div>
                 Create New Game
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="text-sm text-slate-500 mb-3">
                 Start a new game and wait for someone to join
               </p>
-              <Button disabled={createLoading} className="w-full">
+
+              {/* Board Size Selector */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Grid3X3 className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm font-medium">Board Size</span>
+                </div>
+                <div className="flex gap-2">
+                  {[3, 4, 5].map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedBoardSize(size)}
+                      className={cn(
+                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                        selectedBoardSize === size
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      )}
+                    >
+                      {BOARD_SIZES[size].label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {selectedBoardSize === 5 ? '4 in a row' : '3 in a row'} to win
+                </p>
+              </div>
+
+              <Button disabled={createLoading} className="w-full" onClick={handleCreateGame}>
                 <Users className="h-4 w-4 mr-2" />
                 {createLoading ? 'Creating...' : 'Create Game'}
               </Button>
@@ -220,9 +253,32 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-500 mb-4">
-              {activeGame ? 'Finish your current game first' : 'Choose your difficulty level'}
+            <p className="text-sm text-slate-500 mb-3">
+              {activeGame ? 'Finish your current game first' : 'Choose difficulty and board size'}
             </p>
+
+            {/* Board Size for AI - compact version */}
+            {!activeGame && (
+              <div className="flex items-center gap-2 mb-3">
+                <Grid3X3 className="h-4 w-4 text-slate-400" />
+                <div className="flex gap-1 flex-1">
+                  {[3, 4, 5].map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedBoardSize(size)}
+                      className={cn(
+                        'flex-1 px-2 py-1 rounded text-xs font-medium transition-all',
+                        selectedBoardSize === size
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      )}
+                    >
+                      {BOARD_SIZES[size].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Difficulty buttons */}
             <div className="grid grid-cols-3 gap-2">

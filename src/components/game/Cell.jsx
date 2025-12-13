@@ -2,12 +2,29 @@ import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../context/SettingsContext'
 
-export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer }) {
+export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer, boardSize = 3 }) {
   const { currentTheme } = useSettings()
   const isClassic = currentTheme.id === 'classic'
 
+  // Adjust sizes based on board size
+  const getSizeClasses = (isPreview = false) => {
+    if (isPreview) {
+      return {
+        x: boardSize >= 5 ? 'w-6 h-6 sm:w-8 sm:h-8' : boardSize === 4 ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-12 sm:h-12',
+        o: boardSize >= 5 ? 'w-5 h-5 sm:w-7 sm:h-7' : boardSize === 4 ? 'w-6 h-6 sm:w-8 sm:h-8' : 'w-8 h-8 sm:w-10 sm:h-10',
+        emoji: boardSize >= 5 ? 'text-xl sm:text-2xl' : boardSize === 4 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl',
+      }
+    }
+    return {
+      x: boardSize >= 5 ? 'w-8 h-8 sm:w-10 sm:h-10' : boardSize === 4 ? 'w-10 h-10 sm:w-12 sm:h-12' : 'w-12 h-12 sm:w-16 sm:h-16',
+      o: boardSize >= 5 ? 'w-7 h-7 sm:w-9 sm:h-9' : boardSize === 4 ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-14 sm:h-14',
+      emoji: boardSize >= 5 ? 'text-2xl sm:text-3xl' : boardSize === 4 ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl',
+    }
+  }
+
   const renderSymbol = (player, isPreview = false) => {
     const config = player === 'X' ? currentTheme.x : currentTheme.o
+    const sizes = getSizeClasses(isPreview)
 
     if (isClassic) {
       // Use lucide icons for classic theme
@@ -15,7 +32,7 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer })
         return (
           <X
             className={cn(
-              isPreview ? 'w-10 h-10 sm:w-12 sm:h-12' : 'w-12 h-12 sm:w-16 sm:h-16',
+              sizes.x,
               isPreview ? '' : 'cell-enter',
               isPreview ? '' : isWinningCell ? config.winColor : config.color
             )}
@@ -26,7 +43,7 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer })
       return (
         <Circle
           className={cn(
-            isPreview ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-14 sm:h-14',
+            sizes.o,
             isPreview ? '' : 'cell-enter',
             isPreview ? '' : isWinningCell ? config.winColor : config.color
           )}
@@ -39,7 +56,7 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer })
     return (
       <span
         className={cn(
-          isPreview ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl',
+          sizes.emoji,
           !isPreview && 'cell-enter'
         )}
       >
