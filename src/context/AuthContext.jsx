@@ -7,28 +7,64 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
+const PROFILE_CACHE_KEY = 'tic-tac-toe-profile-cache'
+
+function getCachedProfile() {
+  try {
+    const cached = localStorage.getItem(PROFILE_CACHE_KEY)
+    if (cached) {
+      const { profile, timestamp } = JSON.parse(cached)
+      // Cache valid for 1 hour
+      if (Date.now() - timestamp < 3600000) {
+        return profile
+      }
+    }
+  } catch (e) {
+    // Ignore cache errors
+  }
+  return null
+}
+
+function setCachedProfile(profile) {
+  try {
+    if (profile) {
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({
+        profile,
+        timestamp: Date.now()
+      }))
+    } else {
+      localStorage.removeItem(PROFILE_CACHE_KEY)
+    }
+  } catch (e) {
+    // Ignore cache errors
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
+  const [profile, setProfile] = useState(() => getCachedProfile()) // Load from cache initially
   const [loading, setLoading] = useState(true)
-  const [profileLoading, setProfileLoading] = useState(true) // Start true to prevent flash
+  const [profileLoading, setProfileLoading] = useState(!getCachedProfile()) // Skip if cached
 
   useEffect(() => {
     let isMounted = true
 
-    // Safety timeout - if loading takes more than 10 seconds, stop loading
+    // Safety timeout - reduced to 3 seconds since we have cache fallback
     const timeout = setTimeout(() => {
       if (isMounted && loading) {
         console.warn('Auth loading timeout - forcing load complete')
         setLoading(false)
         setProfileLoading(false)
       }
-    }, 10000)
+    }, 3000)
 
     // Get initial session
     const initSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // Start session fetch and warm up Supabase in parallel
+        const sessionPromise = supabase.auth.getSession()
+
+        const { data: { session }, error } = await sessionPromise
 
         if (error) {
           console.error('Error getting session:', error)
@@ -44,8 +80,21 @@ export function AuthProvider({ children }) {
         }
 
         if (session?.user && isMounted) {
-          await fetchProfile(session.user.id)
+          // If we have cached profile for this user, use it immediately
+          const cached = getCachedProfile()
+          if (cached && cached.id === session.user.id) {
+            setProfile(cached)
+            setLoading(false)
+            setProfileLoading(false)
+            // Fetch fresh data in background (don't await)
+            fetchProfile(session.user.id, true)
+          } else {
+            // No cache - need to fetch, but with short timeout
+            await fetchProfile(session.user.id, false)
+          }
         } else if (isMounted) {
+          setProfile(null)
+          setCachedProfile(null)
           setLoading(false)
           setProfileLoading(false)
         }
@@ -82,12 +131,12 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  async function fetchProfile(userId) {
-    console.log('Fetching profile for user:', userId)
+  async function fetchProfile(userId, isBackground = false) {
+    console.log('Fetching profile for user:', userId, isBackground ? '(background)' : '')
     try {
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - shorter for background refresh
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+        setTimeout(() => reject(new Error('Profile fetch timeout')), isBackground ? 3000 : 2000)
       )
 
       const fetchPromise = supabase
@@ -103,13 +152,26 @@ export function AuthProvider({ children }) {
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error)
       }
-      setProfile(data || null)
+
+      if (data) {
+        setProfile(data)
+        setCachedProfile(data)
+      } else if (!isBackground) {
+        // Only clear profile if not a background refresh
+        setProfile(null)
+        setCachedProfile(null)
+      }
     } catch (error) {
       console.error('Error fetching profile:', error.message)
-      setProfile(null)
+      // On background refresh, keep existing profile on error
+      if (!isBackground) {
+        setProfile(null)
+      }
     } finally {
-      setLoading(false)
-      setProfileLoading(false)
+      if (!isBackground) {
+        setLoading(false)
+        setProfileLoading(false)
+      }
     }
   }
 
@@ -154,6 +216,7 @@ export function AuthProvider({ children }) {
     if (!error) {
       setUser(null)
       setProfile(null)
+      setCachedProfile(null)
     }
     return { error }
   }
@@ -166,8 +229,9 @@ export function AuthProvider({ children }) {
       username,
     }).select().single()
 
-    if (!error) {
+    if (!error && data) {
       setProfile(data)
+      setCachedProfile(data)
     }
 
     return { data, error }
@@ -183,8 +247,9 @@ export function AuthProvider({ children }) {
       .select()
       .single()
 
-    if (!error) {
+    if (!error && data) {
       setProfile(data)
+      setCachedProfile(data)
     }
 
     return { data, error }
