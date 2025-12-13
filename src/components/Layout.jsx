@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Grid3X3, Home, History, LogOut, User, UserPlus, Mail, Lock, X } from 'lucide-react'
+import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from './ui/Toast'
 import { ThemeToggle } from './ThemeToggle'
@@ -20,6 +20,7 @@ export default function Layout() {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
+    { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
     { name: 'History', href: '/history', icon: History },
   ]
 

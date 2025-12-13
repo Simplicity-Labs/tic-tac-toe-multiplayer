@@ -490,3 +490,33 @@ export function useGameHistory() {
 
   return { games, loading }
 }
+
+// Hook to fetch global leaderboard
+export function useLeaderboard(limit = 50) {
+  const [players, setPlayers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, wins, losses, draws')
+        .order('wins', { ascending: false })
+        .limit(limit)
+
+      if (error) throw error
+      setPlayers(data || [])
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [limit])
+
+  useEffect(() => {
+    fetchLeaderboard()
+  }, [fetchLeaderboard])
+
+  return { players, loading, refetch: fetchLeaderboard }
+}

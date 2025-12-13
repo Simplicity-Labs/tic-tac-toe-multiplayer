@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Game from './pages/Game'
 import History from './pages/History'
+import Leaderboard from './pages/Leaderboard'
 
 function ProtectedRoute({ children }) {
   const { user, profile, loading, profileLoading } = useAuth()
@@ -92,6 +93,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="game/:gameId" element={<Game />} />
         <Route path="history" element={<History />} />
+        <Route path="leaderboard" element={<Leaderboard />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
