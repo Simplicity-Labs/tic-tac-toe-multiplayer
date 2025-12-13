@@ -11,12 +11,19 @@ function ProtectedRoute({ children }) {
   const { user, profile, loading, profileLoading } = useAuth()
   const cachedProfile = getCachedProfile()
 
-  // Show skeleton if we have cached profile (likely returning user)
-  if (loading || profileLoading) {
-    if (cachedProfile) {
-      return <DashboardSkeleton />
+  // If we have cached profile, skip loading states and render immediately
+  // This eliminates jitter from skeleton → content transition
+  if (cachedProfile) {
+    // Still check if we have a user after auth loads (might be logged out)
+    if (!loading && !profileLoading && !user) {
+      return <Navigate to="/login" replace />
     }
-    // No cache - show minimal spinner (likely new user)
+    // Render immediately with cached data
+    return children
+  }
+
+  // No cache - show spinner while loading
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
@@ -28,8 +35,8 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace />
   }
 
-  // User exists but no profile (and no cache) - redirect to login to create profile
-  if (!profile && !cachedProfile) {
+  // User exists but no profile - redirect to login to create profile
+  if (!profile) {
     return <Navigate to="/login" replace />
   }
 
@@ -40,13 +47,14 @@ function PublicRoute({ children }) {
   const { user, profile, loading, profileLoading } = useAuth()
   const cachedProfile = getCachedProfile()
 
-  // If we have a cached profile, show skeleton and wait for auth to confirm
-  // This prevents the login page flash
+  // If we have cached profile, redirect to dashboard immediately
+  // This prevents login page flash entirely
+  if (cachedProfile) {
+    return <Navigate to="/" replace />
+  }
+
+  // No cache - show minimal spinner while loading
   if (loading || profileLoading) {
-    if (cachedProfile) {
-      return <DashboardSkeleton />
-    }
-    // No cache - show minimal spinner briefly
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
@@ -54,9 +62,8 @@ function PublicRoute({ children }) {
     )
   }
 
-  // Redirect to dashboard if user has auth AND profile (from state or cache)
-  // Using cache as fallback prevents flash when state is briefly out of sync
-  if (user && (profile || cachedProfile)) {
+  // Redirect to dashboard if user has auth AND profile
+  if (user && profile) {
     return <Navigate to="/" replace />
   }
 
