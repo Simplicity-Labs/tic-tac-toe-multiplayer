@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from './AuthContext'
 import { createEmptyBoard } from '../lib/gameLogic'
 
 const INVITE_TIMEOUT = 30000 // 30 seconds
 
-export function useInvitations() {
+const InvitationsContext = createContext(null)
+
+export function InvitationsProvider({ children }) {
   const { user, profile } = useAuth()
   const [pendingInvite, setPendingInvite] = useState(null)
   const [sentInvite, setSentInvite] = useState(null)
@@ -26,9 +28,10 @@ export function useInvitations() {
   }, [sentInvite])
 
   // Listen for incoming invites on user-specific channel
-  // Note: NO dependencies on pendingInvite/sentInvite to keep channel stable
   useEffect(() => {
     if (!user) return
+
+    console.log('Setting up invite channel for user:', user.id)
 
     const channel = supabase.channel(`invites:${user.id}`, {
       config: {
@@ -39,7 +42,6 @@ export function useInvitations() {
     channel
       .on('broadcast', { event: 'invite' }, ({ payload }) => {
         console.log('Received invite:', payload)
-        // Use ref to check current value, not stale closure
         if (pendingInviteRef.current) {
           console.log('Already have pending invite, ignoring')
           return
@@ -50,7 +52,6 @@ export function useInvitations() {
           receivedAt: Date.now(),
         })
 
-        // Auto-dismiss after timeout
         clearTimeout(timeoutRef.current)
         timeoutRef.current = setTimeout(() => {
           setPendingInvite(null)
@@ -58,21 +59,17 @@ export function useInvitations() {
       })
       .on('broadcast', { event: 'invite-response' }, ({ payload }) => {
         console.log('Received invite-response:', payload)
-        // Use ref to check current value
         const currentSentInvite = sentInviteRef.current
         console.log('Current sent invite:', currentSentInvite)
         if (currentSentInvite && payload.gameId === currentSentInvite.gameId) {
           if (payload.accepted) {
-            // They accepted - we can navigate to game
             console.log('Invite accepted!')
             setSentInvite((prev) => (prev ? { ...prev, accepted: true } : null))
           } else {
-            // They declined
             console.log('Invite declined!')
             setSentInvite((prev) =>
               prev ? { ...prev, declined: true } : null
             )
-            // Clear after showing declined message
             setTimeout(() => setSentInvite(null), 3000)
           }
         } else {
@@ -81,7 +78,6 @@ export function useInvitations() {
       })
       .on('broadcast', { event: 'invite-cancelled' }, ({ payload }) => {
         console.log('Received invite-cancelled:', payload)
-        // Use ref to check current value
         const currentPendingInvite = pendingInviteRef.current
         if (currentPendingInvite && payload.gameId === currentPendingInvite.gameId) {
           clearTimeout(timeoutRef.current)
@@ -95,15 +91,15 @@ export function useInvitations() {
     channelRef.current = channel
 
     return () => {
+      console.log('Cleaning up invite channel for user:', user.id)
       clearTimeout(timeoutRef.current)
       supabase.removeChannel(channel)
     }
-  }, [user]) // Only depend on user, not on invite state
+  }, [user])
 
   // Helper to send a broadcast message reliably
-  const sendBroadcast = async (targetUserId, event, payload) => {
+  const sendBroadcast = useCallback(async (targetUserId, event, payload) => {
     const channelName = `invites:${targetUserId}`
-    // Configure channel with ack to ensure message delivery confirmation
     const targetChannel = supabase.channel(channelName, {
       config: {
         broadcast: { ack: true },
@@ -116,7 +112,6 @@ export function useInvitations() {
 
       const cleanup = () => {
         if (timeoutId) clearTimeout(timeoutId)
-        // Longer delay to ensure message propagates through the server
         setTimeout(() => {
           supabase.removeChannel(targetChannel)
         }, 1000)
@@ -155,7 +150,6 @@ export function useInvitations() {
         }
       })
 
-      // Timeout after 5 seconds
       timeoutId = setTimeout(() => {
         if (settled) return
         settled = true
@@ -164,14 +158,12 @@ export function useInvitations() {
         reject(new Error('Channel subscription timeout'))
       }, 5000)
     })
-  }
+  }, [])
 
-  // Send an invite to another user
   const sendInvite = useCallback(
     async (targetUser) => {
       if (!user || !profile) return { error: 'Not authenticated' }
 
-      // Create a game first
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
@@ -200,7 +192,6 @@ export function useInvitations() {
         })
       } catch (err) {
         console.error('Failed to send invite broadcast:', err)
-        // Clean up the game if broadcast failed
         await supabase.from('games').delete().eq('id', game.id)
         return { error: 'Failed to send invite' }
       }
@@ -213,17 +204,15 @@ export function useInvitations() {
 
       return { data: game }
     },
-    [user, profile]
+    [user, profile, sendBroadcast]
   )
 
-  // Accept an incoming invite
   const acceptInvite = useCallback(async () => {
     if (!pendingInvite || !user) return { error: 'No pending invite' }
 
     clearTimeout(timeoutRef.current)
     const inviteToAccept = pendingInvite
 
-    // Join the game
     const { data, error } = await supabase
       .from('games')
       .update({
@@ -241,7 +230,6 @@ export function useInvitations() {
       return { error: error.message }
     }
 
-    // Notify the sender that we accepted
     try {
       await sendBroadcast(inviteToAccept.from.id, 'invite-response', {
         gameId: inviteToAccept.gameId,
@@ -249,29 +237,24 @@ export function useInvitations() {
       })
     } catch (err) {
       console.error('Failed to send accept notification:', err)
-      // Game is already updated, so continue anyway
     }
 
     const gameId = inviteToAccept.gameId
     setPendingInvite(null)
 
     return { data, gameId }
-  }, [pendingInvite, user])
+  }, [pendingInvite, user, sendBroadcast])
 
-  // Decline an incoming invite
   const declineInvite = useCallback(async () => {
     if (!pendingInvite) return
 
     clearTimeout(timeoutRef.current)
     const inviteToDecline = pendingInvite
 
-    // Clear state first to prevent double-decline
     setPendingInvite(null)
 
-    // Delete the game since invite was declined
     await supabase.from('games').delete().eq('id', inviteToDecline.gameId)
 
-    // Notify the sender that we declined
     try {
       await sendBroadcast(inviteToDecline.from.id, 'invite-response', {
         gameId: inviteToDecline.gameId,
@@ -280,21 +263,16 @@ export function useInvitations() {
     } catch (err) {
       console.error('Failed to send decline notification:', err)
     }
-  }, [pendingInvite])
+  }, [pendingInvite, sendBroadcast])
 
-  // Cancel a sent invite
   const cancelInvite = useCallback(async () => {
     if (!sentInvite) return
 
     const inviteToCancel = sentInvite
-
-    // Clear state first
     setSentInvite(null)
 
-    // Delete the game
     await supabase.from('games').delete().eq('id', inviteToCancel.gameId)
 
-    // Notify the target user
     try {
       await sendBroadcast(inviteToCancel.to.id, 'invite-cancelled', {
         gameId: inviteToCancel.gameId,
@@ -302,14 +280,13 @@ export function useInvitations() {
     } catch (err) {
       console.error('Failed to send cancel notification:', err)
     }
-  }, [sentInvite])
+  }, [sentInvite, sendBroadcast])
 
-  // Clear sent invite state
   const clearSentInvite = useCallback(() => {
     setSentInvite(null)
   }, [])
 
-  return {
+  const value = {
     pendingInvite,
     sentInvite,
     sendInvite,
@@ -318,4 +295,18 @@ export function useInvitations() {
     cancelInvite,
     clearSentInvite,
   }
+
+  return (
+    <InvitationsContext.Provider value={value}>
+      {children}
+    </InvitationsContext.Provider>
+  )
+}
+
+export function useInvitations() {
+  const context = useContext(InvitationsContext)
+  if (!context) {
+    throw new Error('useInvitations must be used within an InvitationsProvider')
+  }
+  return context
 }

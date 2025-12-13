@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider } from 'next-themes'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { InvitationsProvider } from './context/InvitationsContext'
 import { ToastProvider } from './components/ui/Toast'
 import './index.css'
 
@@ -12,9 +13,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme">
         <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <InvitationsProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </InvitationsProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

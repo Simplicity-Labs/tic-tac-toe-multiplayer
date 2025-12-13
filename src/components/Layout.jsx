@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useInvitations } from '../hooks/useInvitations'
+import { useInvitations } from '../context/InvitationsContext'
 import { useToast } from './ui/Toast'
 import { ThemeToggle } from './ThemeToggle'
 import { Button } from './ui/Button'
@@ -14,11 +14,26 @@ import { cn } from '../lib/utils'
 
 export default function Layout() {
   const { profile, signOut, isAnonymous, linkEmailToAnonymous } = useAuth()
-  const { pendingInvite, acceptInvite, declineInvite } = useInvitations()
+  const { pendingInvite, sentInvite, acceptInvite, declineInvite } = useInvitations()
   const { toast } = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
+  // Show toast and redirect when invite is declined
+  useEffect(() => {
+    if (sentInvite?.declined) {
+      toast({
+        title: 'Invite declined',
+        description: `${sentInvite.to?.username || 'Player'} declined your game invite.`,
+        variant: 'destructive',
+      })
+      // Redirect to dashboard if on a game page
+      if (location.pathname.startsWith('/game/')) {
+        navigate('/')
+      }
+    }
+  }, [sentInvite?.declined, sentInvite?.to?.username, toast, location.pathname, navigate])
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [upgradeForm, setUpgradeForm] = useState({ email: '', password: '' })
 

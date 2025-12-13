@@ -3,7 +3,7 @@ import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock } from 'lucide-reac
 import { useAuth } from '../context/AuthContext'
 import { useAvailableGames, useCreateGame, useJoinGame, useActiveGame } from '../hooks/useGame'
 import { usePresence } from '../hooks/usePresence'
-import { useInvitations } from '../hooks/useInvitations'
+import { useInvitations } from '../context/InvitationsContext'
 import { useToast } from '../components/ui/Toast'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
