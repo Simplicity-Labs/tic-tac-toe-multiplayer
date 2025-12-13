@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X } from 'lucide-react'
+import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X, Settings } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useInvitations } from '../context/InvitationsContext'
 import { useToast } from './ui/Toast'
@@ -178,6 +178,13 @@ export default function Layout() {
                         Create Account
                       </DropdownMenu.Item>
                     )}
+                    <DropdownMenu.Item
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm outline-none hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => navigate('/settings')}
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </DropdownMenu.Item>
                     <DropdownMenu.Item
                       className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-rose-600 outline-none hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20"
                       onClick={handleSignOut}
