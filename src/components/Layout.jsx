@@ -100,7 +100,7 @@ export default function Layout() {
               <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center">
                 <Grid3X3 className="h-6 w-6 text-white" />
               </div>
-              <span className="text-xl font-bold hidden sm:block">
+              <span className="text-xl font-bold hidden md:block">
                 Tic Tac Toe
               </span>
             </Link>
