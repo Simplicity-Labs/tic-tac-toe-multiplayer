@@ -663,29 +663,63 @@ export function useAvailableGames() {
   }, [user])
 
   useEffect(() => {
+    if (!user) return
+
     fetchGames()
 
-    // Subscribe to new games
+    // Subscribe to all game changes (INSERT, UPDATE, DELETE)
+    // Don't filter by status since we need to catch status changes and deletions
     const channel = supabase
       .channel('available-games')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'games',
-          filter: 'status=eq.waiting',
         },
-        () => {
+        (payload) => {
+          console.log('Game INSERT:', payload)
+          // Only refetch if the new game is waiting and not ours
+          if (payload.new.status === 'waiting' && payload.new.player_x !== user.id) {
+            fetchGames()
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+        },
+        (payload) => {
+          console.log('Game UPDATE:', payload)
+          // Refetch if status changed or player joined
           fetchGames()
         }
       )
-      .subscribe()
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'games',
+        },
+        (payload) => {
+          console.log('Game DELETE:', payload)
+          // Remove deleted game from list immediately
+          setGames((prev) => prev.filter((g) => g.id !== payload.old.id))
+        }
+      )
+      .subscribe((status) => {
+        console.log('Available games channel status:', status)
+      })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchGames])
+  }, [fetchGames, user])
 
   return { games, loading, refetch: fetchGames }
 }

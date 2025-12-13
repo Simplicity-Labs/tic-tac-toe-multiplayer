@@ -38,6 +38,7 @@ Protected routes require both auth and profile. Routes: `/login`, `/` (dashboard
 ### UI Components
 
 Uses Radix UI primitives with Tailwind CSS. Component structure:
+
 - `src/components/ui/` - Reusable primitives (Button, Card, Input, Avatar, Badge, Toast, Timer)
 - `src/components/game/` - Game-specific (Board, Cell, GameStatus, WinOverlay)
 - `src/components/dashboard/` - Dashboard components (StatsCard, GameCard, GameList)
@@ -51,3 +52,5 @@ Uses Radix UI primitives with Tailwind CSS. Component structure:
 ### Real-time
 
 Uses Supabase channels to subscribe to game updates via `postgres_changes` events.
+
+# Notes
