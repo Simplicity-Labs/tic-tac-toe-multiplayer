@@ -20,20 +20,16 @@ export default function Layout() {
   const navigate = useNavigate()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
-  // Show toast and redirect when invite is declined
+  // Show toast when invite is declined (Game page handles the overlay)
   useEffect(() => {
-    if (sentInvite?.declined) {
+    if (sentInvite?.declined && !location.pathname.startsWith('/game/')) {
       toast({
         title: 'Invite declined',
         description: `${sentInvite.to?.username || 'Player'} declined your game invite.`,
         variant: 'destructive',
       })
-      // Redirect to dashboard if on a game page
-      if (location.pathname.startsWith('/game/')) {
-        navigate('/')
-      }
     }
-  }, [sentInvite?.declined, sentInvite?.to?.username, toast, location.pathname, navigate])
+  }, [sentInvite?.declined, sentInvite?.to?.username, toast, location.pathname])
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [upgradeForm, setUpgradeForm] = useState({ email: '', password: '' })
 

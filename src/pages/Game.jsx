@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Share2, Flag, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useInvitations } from '../context/InvitationsContext'
 import { useGame, useCreateGame } from '../hooks/useGame'
 import { useTimer } from '../hooks/useTimer'
 import { useToast } from '../components/ui/Toast'
@@ -9,14 +10,17 @@ import { Button } from '../components/ui/Button'
 import { Board } from '../components/game/Board'
 import { GameStatus } from '../components/game/GameStatus'
 import { WinOverlay } from '../components/game/WinOverlay'
+import { GameClosedOverlay } from '../components/game/GameClosedOverlay'
 
 export default function Game() {
   const { gameId } = useParams()
   const navigate = useNavigate()
   const { user, refreshProfile } = useAuth()
+  const { sentInvite } = useInvitations()
   const { toast } = useToast()
   const { createGame } = useCreateGame()
   const [showForfeitModal, setShowForfeitModal] = useState(false)
+  const [gameClosed, setGameClosed] = useState({ show: false, reason: 'deleted' })
   const pendingNavigationRef = useRef(null)
 
   const {
@@ -36,6 +40,20 @@ export default function Game() {
   // Check if game is active (can be forfeited)
   const isGameActive = game?.status === 'in_progress' || game?.status === 'waiting'
   const isPlayer = game && user && (game.player_x === user.id || game.player_o === user.id)
+
+  // Show overlay if invite was declined
+  useEffect(() => {
+    if (sentInvite?.declined && sentInvite?.gameId === gameId) {
+      setGameClosed({ show: true, reason: 'declined' })
+    }
+  }, [sentInvite?.declined, sentInvite?.gameId, gameId])
+
+  // Show overlay if game is deleted/not found (after initial load)
+  useEffect(() => {
+    if (!loading && (error || !game) && !gameClosed.show) {
+      setGameClosed({ show: true, reason: 'deleted' })
+    }
+  }, [loading, error, game, gameClosed.show])
 
   // Warn on browser close/refresh when game is active
   useEffect(() => {
@@ -256,6 +274,12 @@ export default function Game() {
         game={game}
         currentUserId={user?.id}
         onPlayAgain={handlePlayAgain}
+      />
+
+      {/* Game closed overlay (invite declined, game deleted, etc.) */}
+      <GameClosedOverlay
+        show={gameClosed.show}
+        reason={gameClosed.reason}
       />
 
       {/* Forfeit/Cancel confirmation modal */}

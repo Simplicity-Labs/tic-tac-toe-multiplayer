@@ -18,7 +18,7 @@ export function ToastProvider({ children }) {
 
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 5000)
+    }, 7000)
   }, [])
 
   const dismiss = useCallback((id) => {
@@ -62,7 +62,7 @@ export function ToastProvider({ children }) {
             </ToastPrimitive.Close>
           </ToastPrimitive.Root>
         ))}
-        <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:max-w-[420px]" />
+        <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse gap-3 p-4 sm:max-w-[420px]" />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
   )
