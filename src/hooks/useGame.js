@@ -296,6 +296,45 @@ export function useGame(gameId) {
     }
   }, [game, updateStats])
 
+  // Forfeit the game (current user loses)
+  const forfeit = useCallback(async () => {
+    if (!game || !user) return { error: 'No game or user' }
+    if (game.status !== 'in_progress' && game.status !== 'waiting') {
+      return { error: 'Game is not active' }
+    }
+
+    // Determine the winner (opponent)
+    let winner
+    if (game.is_ai_game) {
+      winner = 'ai'
+    } else {
+      winner = game.player_x === user.id ? game.player_o : game.player_x
+    }
+
+    const { data, error: updateError } = await supabase
+      .from('games')
+      .update({
+        status: 'completed',
+        winner: winner,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', game.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      return { error: updateError.message }
+    }
+
+    // Update stats (only if it was in progress, not waiting)
+    if (game.status === 'in_progress' && winner) {
+      await updateStats(winner)
+    }
+
+    setGame(data)
+    return { data }
+  }, [game, user, updateStats])
+
   // Get current player's symbol
   const getPlayerSymbol = useCallback(() => {
     if (!game || !user) return null
@@ -317,6 +356,7 @@ export function useGame(gameId) {
     makeMove,
     makeAIMove,
     handleTimeout,
+    forfeit,
     getPlayerSymbol,
     isMyTurn,
     refetch: fetchGame,

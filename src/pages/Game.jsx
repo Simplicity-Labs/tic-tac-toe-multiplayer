@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Share2 } from 'lucide-react'
+import { ArrowLeft, Share2, Flag, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGame, useCreateGame } from '../hooks/useGame'
 import { useTimer } from '../hooks/useTimer'
@@ -16,6 +16,8 @@ export default function Game() {
   const { user, refreshProfile } = useAuth()
   const { toast } = useToast()
   const { createGame } = useCreateGame()
+  const [showForfeitModal, setShowForfeitModal] = useState(false)
+  const pendingNavigationRef = useRef(null)
 
   const {
     game,
@@ -26,9 +28,28 @@ export default function Game() {
     makeMove,
     makeAIMove,
     handleTimeout,
+    forfeit,
     getPlayerSymbol,
     isMyTurn,
   } = useGame(gameId)
+
+  // Check if game is active (can be forfeited)
+  const isGameActive = game?.status === 'in_progress' || game?.status === 'waiting'
+  const isPlayer = game && user && (game.player_x === user.id || game.player_o === user.id)
+
+  // Warn on browser close/refresh when game is active
+  useEffect(() => {
+    if (!isGameActive || !isPlayer) return
+
+    const handleBeforeUnload = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+      return ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isGameActive, isPlayer])
 
   // Timer for the current turn
   const { timeRemaining, isLow, percentage } = useTimer(
@@ -105,6 +126,43 @@ export default function Game() {
     })
   }
 
+  const handleForfeit = async () => {
+    const { error } = await forfeit()
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Game forfeited',
+        description: 'You have forfeited the game.',
+        variant: 'destructive',
+      })
+      setShowForfeitModal(false)
+      // Navigate if there was a pending navigation
+      if (pendingNavigationRef.current) {
+        navigate(pendingNavigationRef.current)
+        pendingNavigationRef.current = null
+      }
+    }
+  }
+
+  const handleCancelForfeit = () => {
+    setShowForfeitModal(false)
+    pendingNavigationRef.current = null
+  }
+
+  const handleNavigateAway = (path) => {
+    if (isGameActive && isPlayer) {
+      pendingNavigationRef.current = path
+      setShowForfeitModal(true)
+    } else {
+      navigate(path)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -135,16 +193,27 @@ export default function Game() {
     <div className="max-w-lg mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/')}>
+        <Button
+          variant="ghost"
+          onClick={() => handleNavigateAway('/')}
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        {game.status === 'waiting' && (
-          <Button variant="outline" onClick={handleShare}>
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {game.status === 'waiting' && (
+            <Button variant="outline" onClick={handleShare}>
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+          )}
+          {isGameActive && isPlayer && (
+            <Button variant="destructive" onClick={() => setShowForfeitModal(true)}>
+              <Flag className="h-4 w-4 mr-2" />
+              Forfeit
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Game status */}
@@ -182,6 +251,45 @@ export default function Game() {
         currentUserId={user?.id}
         onPlayAgain={handlePlayAgain}
       />
+
+      {/* Forfeit confirmation modal */}
+      {showForfeitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-rose-600 dark:text-rose-400">Forfeit Game?</h2>
+              <button
+                onClick={handleCancelForfeit}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-6">
+              {game?.status === 'waiting'
+                ? 'Are you sure you want to cancel this game? The game will be deleted.'
+                : 'Are you sure you want to forfeit? This will count as a loss.'}
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleCancelForfeit}
+              >
+                Keep Playing
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleForfeit}
+              >
+                <Flag className="h-4 w-4 mr-2" />
+                Forfeit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
