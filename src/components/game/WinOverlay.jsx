@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trophy, Frown, Handshake, Home, RotateCcw, TreePine, Gift } from 'lucide-react'
+import { Trophy, Frown, Handshake, Home, RotateCcw, TreePine, Gift, Heart, Clover, Egg, Ghost } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
@@ -8,9 +8,103 @@ import { useSettings } from '../../context/SettingsContext'
 
 const OVERLAY_DELAY_MS = 1500
 
+// Holiday-specific configurations
+const HOLIDAY_CONFIG = {
+  newyear: {
+    confettiColors: ['#fbbf24', '#a855f7', '#3b82f6', '#ffffff'],
+    WinIcon: Trophy,
+    DrawIcon: Gift,
+    bgGradient: 'bg-gradient-to-b from-slate-900 to-purple-900',
+    borderColor: 'border-amber-500/30',
+    winTitle: 'New Year Victory!',
+    drawTitle: 'New Year Draw!',
+    lossTitle: 'Better Luck This Year!',
+    winSubtitle: 'Starting the year with a win!',
+    drawSubtitle: 'A tie to start the new year!',
+    lossSubtitle: 'The new year brings new chances!',
+    accentColor: 'text-amber-400',
+    secondaryColor: 'text-purple-400',
+  },
+  valentine: {
+    confettiColors: ['#ec4899', '#f43f5e', '#ffffff', '#fda4af'],
+    WinIcon: Heart,
+    DrawIcon: Heart,
+    bgGradient: 'bg-gradient-to-b from-slate-900 to-pink-900',
+    borderColor: 'border-pink-500/30',
+    winTitle: 'Love Wins!',
+    drawTitle: 'Lovely Draw!',
+    lossTitle: 'Heartbreak!',
+    winSubtitle: 'Your heart is victorious!',
+    drawSubtitle: 'Love shared by both players!',
+    lossSubtitle: "Don't lose heart, try again!",
+    accentColor: 'text-pink-400',
+    secondaryColor: 'text-rose-400',
+  },
+  stpatricks: {
+    confettiColors: ['#22c55e', '#16a34a', '#fbbf24', '#ffffff'],
+    WinIcon: Clover,
+    DrawIcon: Clover,
+    bgGradient: 'bg-gradient-to-b from-slate-900 to-green-900',
+    borderColor: 'border-green-500/30',
+    winTitle: 'Lucky Victory!',
+    drawTitle: 'Lucky Draw!',
+    lossTitle: 'Out of Luck!',
+    winSubtitle: "The luck o' the Irish is with you!",
+    drawSubtitle: 'Luck shared all around!',
+    lossSubtitle: 'Find your lucky charm!',
+    accentColor: 'text-green-400',
+    secondaryColor: 'text-emerald-400',
+  },
+  easter: {
+    confettiColors: ['#f472b6', '#a78bfa', '#fcd34d', '#86efac'],
+    WinIcon: Egg,
+    DrawIcon: Egg,
+    bgGradient: 'bg-gradient-to-b from-slate-900 to-pink-900',
+    borderColor: 'border-pink-500/30',
+    winTitle: 'Egg-cellent Victory!',
+    drawTitle: 'Egg-citing Draw!',
+    lossTitle: 'Cracked!',
+    winSubtitle: 'You found the golden egg!',
+    drawSubtitle: 'A basket full of ties!',
+    lossSubtitle: 'Hop back and try again!',
+    accentColor: 'text-pink-400',
+    secondaryColor: 'text-purple-400',
+  },
+  halloween: {
+    confettiColors: ['#f97316', '#a855f7', '#000000', '#ffffff'],
+    WinIcon: Ghost,
+    DrawIcon: Ghost,
+    bgGradient: 'bg-gradient-to-b from-slate-900 to-orange-900',
+    borderColor: 'border-orange-500/30',
+    winTitle: 'Spooky Victory!',
+    drawTitle: 'Ghostly Draw!',
+    lossTitle: 'Spooked!',
+    winSubtitle: 'You scared off the competition!',
+    drawSubtitle: 'A haunted tie!',
+    lossSubtitle: 'Boo! Better luck next time!',
+    accentColor: 'text-orange-400',
+    secondaryColor: 'text-purple-400',
+  },
+  christmas: {
+    confettiColors: ['#ef4444', '#22c55e', '#fbbf24', '#ffffff'],
+    WinIcon: TreePine,
+    DrawIcon: Gift,
+    bgGradient: 'bg-gradient-to-b from-slate-900 to-slate-800',
+    borderColor: 'border-red-500/30',
+    winTitle: 'Holiday Victory!',
+    drawTitle: 'Holiday Draw!',
+    lossTitle: 'Coal for You!',
+    winSubtitle: 'Ho ho ho! You won the game!',
+    drawSubtitle: 'A festive tie! Both played well.',
+    lossSubtitle: 'Better luck next Christmas!',
+    accentColor: 'text-green-400',
+    secondaryColor: 'text-red-400',
+  },
+}
+
 export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO }) {
   const navigate = useNavigate()
-  const { currentTheme } = useSettings()
+  const { currentTheme, isHolidaySeason, currentHolidayTheme } = useSettings()
   const [visible, setVisible] = useState(false)
 
   const isCompleted = game?.status === 'completed'
@@ -19,7 +113,10 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
   const isDraw = game?.winner === null
   const isAIWin = game?.winner === 'ai'
   const isSpectator = !isPlayer
-  const isChristmas = currentTheme.id === 'christmas'
+
+  // Check if current theme is a holiday theme
+  const isHolidayTheme = currentTheme.seasonal
+  const holidayConfig = isHolidayTheme ? HOLIDAY_CONFIG[currentTheme.id] : null
 
   // Get winner info for spectators
   const winnerIsX = game?.winner === game?.player_x
@@ -37,95 +134,69 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
 
       // Fire confetti on win (not draw or loss)
       if (isWinner || (isSpectator && !isDraw)) {
-        if (isChristmas) {
-          // Christmas confetti - red and green
-          const colors = ['#ef4444', '#22c55e', '#fbbf24', '#ffffff']
+        const colors = holidayConfig?.confettiColors
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          ...(colors && { colors }),
+        })
+        setTimeout(() => {
           confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors,
+            particleCount: 50,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            ...(colors && { colors }),
           })
-          setTimeout(() => {
-            confetti({
-              particleCount: 50,
-              angle: 60,
-              spread: 55,
-              origin: { x: 0 },
-              colors,
-            })
-            confetti({
-              particleCount: 50,
-              angle: 120,
-              spread: 55,
-              origin: { x: 1 },
-              colors,
-            })
-          }, 200)
-        } else {
-          // Standard confetti
           confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
+            particleCount: 50,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            ...(colors && { colors }),
           })
-          setTimeout(() => {
-            confetti({
-              particleCount: 50,
-              angle: 60,
-              spread: 55,
-              origin: { x: 0 },
-            })
-            confetti({
-              particleCount: 50,
-              angle: 120,
-              spread: 55,
-              origin: { x: 1 },
-            })
-          }, 200)
-        }
+        }, 200)
       }
     }, OVERLAY_DELAY_MS)
 
     return () => clearTimeout(timer)
-  }, [isCompleted, isWinner, isSpectator, isDraw, isChristmas])
+  }, [isCompleted, isWinner, isSpectator, isDraw, holidayConfig])
 
   if (!isCompleted || !visible) return null
 
   let title, subtitle, Icon, colorClass
 
   if (isDraw) {
-    title = isChristmas ? "Holiday Draw!" : "It's a Draw!"
+    title = holidayConfig ? holidayConfig.drawTitle : "It's a Draw!"
     subtitle = isSpectator
       ? "Neither player could claim victory."
-      : isChristmas
-        ? "A festive tie! Both players played well."
+      : holidayConfig
+        ? holidayConfig.drawSubtitle
         : "Great match! Neither player could claim victory."
-    Icon = isChristmas ? Gift : Handshake
-    colorClass = isChristmas ? 'text-amber-500' : 'text-amber-500'
+    Icon = holidayConfig ? holidayConfig.DrawIcon : Handshake
+    colorClass = 'text-amber-500'
   } else if (isSpectator) {
-    title = isChristmas
-      ? `${winnerName || (winnerIsX ? 'X' : 'O')} Wins!`
-      : `${winnerName || (winnerIsX ? 'X' : 'O')} Wins!`
-    subtitle = isChristmas
-      ? `A holiday victory for ${winnerIsX ? 'X' : 'O'}!`
+    title = `${winnerName || (winnerIsX ? 'X' : 'O')} Wins!`
+    subtitle = holidayConfig
+      ? `A ${currentTheme.name.toLowerCase()} victory for ${winnerIsX ? 'X' : 'O'}!`
       : `${winnerIsX ? 'X' : 'O'} claimed victory in this match.`
-    Icon = isChristmas ? TreePine : Trophy
+    Icon = holidayConfig ? holidayConfig.WinIcon : Trophy
     colorClass = 'text-emerald-500'
   } else if (isWinner) {
-    title = isChristmas ? 'Holiday Victory!' : 'Victory!'
-    subtitle = isChristmas
-      ? 'Ho ho ho! You won the game!'
+    title = holidayConfig ? holidayConfig.winTitle : 'Victory!'
+    subtitle = holidayConfig
+      ? holidayConfig.winSubtitle
       : 'Congratulations! You won the game!'
-    Icon = isChristmas ? TreePine : Trophy
+    Icon = holidayConfig ? holidayConfig.WinIcon : Trophy
     colorClass = 'text-emerald-500'
   } else {
     title = isAIWin
-      ? (isChristmas ? 'Frosty Wins!' : 'AI Wins!')
-      : (isChristmas ? 'Coal for You!' : 'Defeat')
+      ? (holidayConfig ? `AI ${currentTheme.name} Win!` : 'AI Wins!')
+      : (holidayConfig ? holidayConfig.lossTitle : 'Defeat')
     subtitle = isAIWin
-      ? (isChristmas ? 'The AI got a holiday win!' : 'The AI proved unbeatable this time.')
-      : (isChristmas ? 'Better luck next Christmas!' : 'Better luck next time!')
+      ? (holidayConfig ? `The AI got a ${currentTheme.name.toLowerCase()} win!` : 'The AI proved unbeatable this time.')
+      : (holidayConfig ? holidayConfig.lossSubtitle : 'Better luck next time!')
     Icon = Frown
     colorClass = 'text-rose-500'
   }
@@ -135,11 +206,11 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
       {/* Backdrop */}
       <div className={cn(
         "absolute inset-0 backdrop-blur-sm",
-        isChristmas ? "bg-black/60" : "bg-black/50"
+        holidayConfig ? "bg-black/60" : "bg-black/50"
       )} />
 
-      {/* Snowflakes for Christmas */}
-      {isChristmas && (
+      {/* Floating particles for holiday themes */}
+      {holidayConfig && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {[...Array(20)].map((_, i) => (
             <div
@@ -152,7 +223,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
                 fontSize: `${10 + Math.random() * 15}px`,
               }}
             >
-              *
+              {currentTheme.x.symbol}
             </div>
           ))}
         </div>
@@ -161,18 +232,22 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
       {/* Content */}
       <div className={cn(
         "relative rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full animate-bounce-in",
-        isChristmas
-          ? "bg-gradient-to-b from-slate-900 to-slate-800 border-2 border-red-500/30"
+        holidayConfig
+          ? `${holidayConfig.bgGradient} border-2 ${holidayConfig.borderColor}`
           : "bg-white dark:bg-slate-900"
       )}>
-        {/* Christmas decorations */}
-        {isChristmas && (
+        {/* Holiday decorations */}
+        {holidayConfig && (
           <>
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl">
-              *
+              {currentTheme.x.symbol}
             </div>
-            <div className="absolute top-2 left-4 text-red-500 text-lg">*</div>
-            <div className="absolute top-2 right-4 text-green-500 text-lg">*</div>
+            <div className={cn("absolute top-2 left-4 text-lg", holidayConfig.accentColor)}>
+              {currentTheme.o.symbol}
+            </div>
+            <div className={cn("absolute top-2 right-4 text-lg", holidayConfig.secondaryColor)}>
+              {currentTheme.x.symbol}
+            </div>
           </>
         )}
 
@@ -181,7 +256,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
           'mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6',
           isDraw ? 'bg-amber-100 dark:bg-amber-900/30' :
           isWinner || (isSpectator && !isDraw)
-            ? (isChristmas ? 'bg-green-900/50 border-2 border-green-500/50' : 'bg-emerald-100 dark:bg-emerald-900/30')
+            ? (holidayConfig ? 'bg-emerald-900/50 border-2 border-emerald-500/50' : 'bg-emerald-100 dark:bg-emerald-900/30')
             : 'bg-rose-100 dark:bg-rose-900/30'
         )}>
           <Icon className={cn('w-10 h-10', colorClass)} />
@@ -196,7 +271,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
         </h2>
         <p className={cn(
           "text-center mb-8",
-          isChristmas ? "text-slate-300" : "text-slate-600 dark:text-slate-400"
+          holidayConfig ? "text-slate-300" : "text-slate-600 dark:text-slate-400"
         )}>
           {subtitle}
         </p>
@@ -206,29 +281,29 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
           <div className="text-center">
             <div className={cn(
               "text-2xl font-bold",
-              isChristmas ? "text-green-400" : "text-primary-500"
+              holidayConfig ? holidayConfig.accentColor : "text-primary-500"
             )}>
               {game.board.filter(c => c === 'X').length}
             </div>
             <div className={cn(
               "text-xs uppercase",
-              isChristmas ? "text-slate-400" : "text-slate-500"
+              holidayConfig ? "text-slate-400" : "text-slate-500"
             )}>
-              {isChristmas ? currentTheme.x.symbol : 'X'} Moves
+              {holidayConfig ? currentTheme.x.symbol : 'X'} Moves
             </div>
           </div>
           <div className="text-center">
             <div className={cn(
               "text-2xl font-bold",
-              isChristmas ? "text-red-400" : "text-rose-500"
+              holidayConfig ? holidayConfig.secondaryColor : "text-rose-500"
             )}>
               {game.board.filter(c => c === 'O').length}
             </div>
             <div className={cn(
               "text-xs uppercase",
-              isChristmas ? "text-slate-400" : "text-slate-500"
+              holidayConfig ? "text-slate-400" : "text-slate-500"
             )}>
-              {isChristmas ? currentTheme.o.symbol : 'O'} Moves
+              {holidayConfig ? currentTheme.o.symbol : 'O'} Moves
             </div>
           </div>
         </div>
@@ -239,7 +314,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
             variant="outline"
             className={cn(
               "flex-1",
-              isChristmas && "border-slate-600 hover:bg-slate-700"
+              holidayConfig && "border-slate-600 hover:bg-slate-700"
             )}
             onClick={() => navigate('/')}
           >
@@ -250,7 +325,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
             <Button
               className={cn(
                 "flex-1",
-                isChristmas && "bg-red-600 hover:bg-red-700"
+                holidayConfig && "bg-primary-600 hover:bg-primary-700"
               )}
               onClick={onPlayAgain}
             >

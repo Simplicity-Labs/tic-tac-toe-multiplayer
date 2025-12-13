@@ -8,8 +8,23 @@ export function useSettings() {
 
 const SETTINGS_STORAGE_KEY = 'tic-tac-toe-settings'
 
-// Check if it's December
-const isDecember = () => new Date().getMonth() === 11
+// Get current month (0-indexed)
+const getCurrentMonth = () => new Date().getMonth()
+
+// Holiday months mapping (0-indexed: Jan=0, Dec=11)
+const HOLIDAY_MONTHS = {
+  0: 'newyear',     // January
+  1: 'valentine',   // February
+  2: 'stpatricks',  // March
+  3: 'easter',      // April
+  9: 'halloween',   // October
+  11: 'christmas',  // December
+}
+
+// Get current holiday theme ID if any
+const getCurrentHolidayThemeId = () => {
+  return HOLIDAY_MONTHS[getCurrentMonth()] || null
+}
 
 // Board size options
 export const BOARD_SIZE_OPTIONS = [
@@ -55,6 +70,57 @@ export const SYMBOL_THEMES = {
     x: { symbol: '🍕', color: '', winColor: '' },
     o: { symbol: '🍔', color: '', winColor: '' },
   },
+  // Holiday themes
+  newyear: {
+    id: 'newyear',
+    name: 'New Year',
+    description: 'Happy New Year!',
+    x: { symbol: '🎆', color: '', winColor: '' },
+    o: { symbol: '🥳', color: '', winColor: '' },
+    seasonal: true,
+    availableMonth: 0, // January
+    holidayName: "New Year's Day",
+  },
+  valentine: {
+    id: 'valentine',
+    name: 'Valentine',
+    description: 'Love is in the air!',
+    x: { symbol: '💘', color: '', winColor: '' },
+    o: { symbol: '🌹', color: '', winColor: '' },
+    seasonal: true,
+    availableMonth: 1, // February
+    holidayName: "Valentine's Day",
+  },
+  stpatricks: {
+    id: 'stpatricks',
+    name: "St. Patrick's",
+    description: 'Luck of the Irish!',
+    x: { symbol: '☘️', color: '', winColor: '' },
+    o: { symbol: '🍀', color: '', winColor: '' },
+    seasonal: true,
+    availableMonth: 2, // March
+    holidayName: "St. Patrick's Day",
+  },
+  easter: {
+    id: 'easter',
+    name: 'Easter',
+    description: 'Spring celebration!',
+    x: { symbol: '🐰', color: '', winColor: '' },
+    o: { symbol: '🥚', color: '', winColor: '' },
+    seasonal: true,
+    availableMonth: 3, // April
+    holidayName: 'Easter',
+  },
+  halloween: {
+    id: 'halloween',
+    name: 'Halloween',
+    description: 'Spooky season!',
+    x: { symbol: '🎃', color: '', winColor: '' },
+    o: { symbol: '👻', color: '', winColor: '' },
+    seasonal: true,
+    availableMonth: 9, // October
+    holidayName: 'Halloween',
+  },
   christmas: {
     id: 'christmas',
     name: 'Christmas',
@@ -62,7 +128,8 @@ export const SYMBOL_THEMES = {
     x: { symbol: '🎄', color: '', winColor: '' },
     o: { symbol: '🎅', color: '', winColor: '' },
     seasonal: true,
-    availableMonth: 11, // December (0-indexed)
+    availableMonth: 11, // December
+    holidayName: 'Christmas',
   },
 }
 
@@ -97,13 +164,27 @@ function storeSettings(settings) {
 }
 
 export function SettingsProvider({ children }) {
+  const [autoEnableHoliday, setAutoEnableHolidayState] = useState(() => {
+    const stored = getStoredSettings()
+    // Default to true if not set
+    return stored?.autoEnableHoliday !== false
+  })
+
   const [symbolTheme, setSymbolThemeState] = useState(() => {
     const stored = getStoredSettings()
+    const currentHolidayId = getCurrentHolidayThemeId()
+    const autoEnable = stored?.autoEnableHoliday !== false
+
+    // If auto-enable is on and there's a holiday theme available, use it
+    if (autoEnable && currentHolidayId) {
+      return currentHolidayId
+    }
+
     // Validate stored theme exists and is available
     if (stored?.symbolTheme && SYMBOL_THEMES[stored.symbolTheme]) {
       const theme = SYMBOL_THEMES[stored.symbolTheme]
       // Check if seasonal theme is still available
-      if (theme.seasonal && theme.availableMonth !== new Date().getMonth()) {
+      if (theme.seasonal && theme.availableMonth !== getCurrentMonth()) {
         return 'classic'
       }
       return stored.symbolTheme
@@ -118,6 +199,21 @@ export function SettingsProvider({ children }) {
     }
     return 3
   })
+
+  const setAutoEnableHoliday = (enabled) => {
+    setAutoEnableHolidayState(enabled)
+    const stored = getStoredSettings() || {}
+    storeSettings({ ...stored, autoEnableHoliday: enabled })
+
+    // If enabling and there's a holiday theme, switch to it
+    if (enabled) {
+      const currentHolidayId = getCurrentHolidayThemeId()
+      if (currentHolidayId) {
+        setSymbolThemeState(currentHolidayId)
+        storeSettings({ ...stored, autoEnableHoliday: enabled, symbolTheme: currentHolidayId })
+      }
+    }
+  }
 
   const setSymbolTheme = (themeId) => {
     if (SYMBOL_THEMES[themeId]) {
@@ -137,13 +233,17 @@ export function SettingsProvider({ children }) {
 
   const currentTheme = SYMBOL_THEMES[symbolTheme] || SYMBOL_THEMES.classic
   const currentBoardSizeOption = BOARD_SIZE_OPTIONS.find(o => o.size === boardSize) || BOARD_SIZE_OPTIONS[0]
+  const currentHolidayTheme = getCurrentHolidayThemeId() ? SYMBOL_THEMES[getCurrentHolidayThemeId()] : null
 
   const value = {
     symbolTheme,
     setSymbolTheme,
     currentTheme,
     availableThemes: getAvailableThemes(),
-    isChristmasSeason: isDecember(),
+    autoEnableHoliday,
+    setAutoEnableHoliday,
+    currentHolidayTheme,
+    isHolidaySeason: !!getCurrentHolidayThemeId(),
     boardSize,
     setBoardSize,
     currentBoardSizeOption,

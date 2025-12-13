@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft } from 'lucide-react'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { cn } from '../lib/utils'
@@ -10,7 +10,10 @@ export default function Settings() {
     symbolTheme,
     setSymbolTheme,
     availableThemes,
-    isChristmasSeason,
+    autoEnableHoliday,
+    setAutoEnableHoliday,
+    currentHolidayTheme,
+    isHolidaySeason,
     boardSize,
     setBoardSize,
     boardSizeOptions,
@@ -33,6 +36,41 @@ export default function Settings() {
         <p className="text-slate-500">Customize your game experience</p>
       </div>
 
+      {/* Auto-enable Holiday Theme Toggle */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="font-medium">Auto-enable Holiday Themes</p>
+                <p className="text-sm text-slate-500">
+                  {isHolidaySeason && currentHolidayTheme
+                    ? `Currently: ${currentHolidayTheme.holidayName}`
+                    : 'Automatically use holiday themes when available'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setAutoEnableHoliday(!autoEnableHoliday)}
+              className={cn(
+                'relative w-12 h-7 rounded-full transition-colors',
+                autoEnableHoliday ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'
+              )}
+            >
+              <div
+                className={cn(
+                  'absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform',
+                  autoEnableHoliday ? 'translate-x-6' : 'translate-x-1'
+                )}
+              />
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <h2 className="text-lg font-semibold">Game Symbols</h2>
@@ -42,7 +80,7 @@ export default function Settings() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {availableThemes.map((theme) => {
               const isSelected = symbolTheme === theme.id
-              const isChristmas = theme.id === 'christmas'
+              const isHoliday = theme.seasonal
 
               return (
                 <button
@@ -53,7 +91,7 @@ export default function Settings() {
                     isSelected
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                       : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
-                    isChristmas && 'bg-gradient-to-br from-red-50 to-green-50 dark:from-red-900/10 dark:to-green-900/10'
+                    isHoliday && getHolidayGradient(theme.id)
                   )}
                 >
                   {isSelected && (
@@ -61,7 +99,7 @@ export default function Settings() {
                       <Check className="h-4 w-4 text-primary-500" />
                     </div>
                   )}
-                  {isChristmas && (
+                  {isHoliday && !isSelected && (
                     <div className="absolute top-2 right-2">
                       <Sparkles className="h-4 w-4 text-amber-500" />
                     </div>
@@ -89,9 +127,9 @@ export default function Settings() {
                     <p className="text-xs text-slate-500">{theme.description}</p>
                   </div>
 
-                  {isChristmas && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      Holiday special!
+                  {isHoliday && (
+                    <p className={cn('text-xs mt-1', getHolidayTextColor(theme.id))}>
+                      {theme.holidayName} special!
                     </p>
                   )}
                 </button>
@@ -99,9 +137,9 @@ export default function Settings() {
             })}
           </div>
 
-          {isChristmasSeason && (
+          {isHolidaySeason && currentHolidayTheme && (
             <p className="text-sm text-slate-500 mt-4 text-center">
-              Happy Holidays! The Christmas theme is available this month.
+              {getHolidayMessage(currentHolidayTheme.id)}
             </p>
           )}
         </CardContent>
@@ -177,4 +215,41 @@ function MiniGridPreview({ size }) {
         ))}
     </div>
   )
+}
+
+// Helper functions for holiday theming
+function getHolidayGradient(themeId) {
+  const gradients = {
+    newyear: 'bg-gradient-to-br from-amber-50 to-purple-50 dark:from-amber-900/10 dark:to-purple-900/10',
+    valentine: 'bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/10 dark:to-rose-900/10',
+    stpatricks: 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10',
+    easter: 'bg-gradient-to-br from-pink-50 to-sky-50 dark:from-pink-900/10 dark:to-sky-900/10',
+    halloween: 'bg-gradient-to-br from-orange-50 to-purple-50 dark:from-orange-900/10 dark:to-purple-900/10',
+    christmas: 'bg-gradient-to-br from-red-50 to-green-50 dark:from-red-900/10 dark:to-green-900/10',
+  }
+  return gradients[themeId] || ''
+}
+
+function getHolidayTextColor(themeId) {
+  const colors = {
+    newyear: 'text-amber-600 dark:text-amber-400',
+    valentine: 'text-pink-600 dark:text-pink-400',
+    stpatricks: 'text-green-600 dark:text-green-400',
+    easter: 'text-pink-600 dark:text-pink-400',
+    halloween: 'text-orange-600 dark:text-orange-400',
+    christmas: 'text-green-600 dark:text-green-400',
+  }
+  return colors[themeId] || 'text-slate-600 dark:text-slate-400'
+}
+
+function getHolidayMessage(themeId) {
+  const messages = {
+    newyear: 'Happy New Year! The New Year theme is available this month.',
+    valentine: "Happy Valentine's Day! The Valentine theme is available this month.",
+    stpatricks: "Happy St. Patrick's Day! The Irish theme is available this month.",
+    easter: 'Happy Easter! The Easter theme is available this month.',
+    halloween: 'Happy Halloween! The spooky theme is available this month.',
+    christmas: 'Happy Holidays! The Christmas theme is available this month.',
+  }
+  return messages[themeId] || 'A holiday theme is available this month!'
 }
