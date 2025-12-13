@@ -1,15 +1,19 @@
 import { useNavigate } from 'react-router-dom'
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar } from 'lucide-react'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
+import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { cn } from '../lib/utils'
 
 export default function Settings() {
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const {
     symbolTheme,
     setSymbolTheme,
     availableThemes,
+    adminMode,
+    setAdminMode,
     autoEnableHoliday,
     setAutoEnableHoliday,
     currentHolidayTheme,
@@ -191,6 +195,48 @@ export default function Settings() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Admin Mode Toggle - Only visible to admins */}
+      {isAdmin && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-medium flex items-center gap-2">
+                    Admin Mode
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
+                      Admin Only
+                    </span>
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {adminMode
+                      ? 'All holiday themes are visible'
+                      : 'Enable to see all holiday themes'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAdminMode(!adminMode)}
+                className={cn(
+                  'relative w-12 h-7 rounded-full transition-colors',
+                  adminMode ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'
+                )}
+              >
+                <div
+                  className={cn(
+                    'absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform',
+                    adminMode ? 'translate-x-6' : 'translate-x-1'
+                  )}
+                />
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -268,6 +268,7 @@ export function AuthProvider({ children }) {
     loading,
     profileLoading,
     isAnonymous: user?.is_anonymous ?? false,
+    isAdmin: profile?.is_admin ?? false,
     signUp,
     signIn,
     signInAnonymously,

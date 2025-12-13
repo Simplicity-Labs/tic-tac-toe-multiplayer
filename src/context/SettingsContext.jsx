@@ -133,14 +133,22 @@ export const SYMBOL_THEMES = {
   },
 }
 
-// Get available themes (filter seasonal ones)
-export function getAvailableThemes() {
+// Get available themes (filter seasonal ones unless admin mode)
+export function getAvailableThemes(adminMode = false) {
   return Object.values(SYMBOL_THEMES).filter(theme => {
+    // Admin mode shows all themes
+    if (adminMode) return true
+    // Normal mode filters seasonal themes by month
     if (theme.seasonal && theme.availableMonth !== undefined) {
       return new Date().getMonth() === theme.availableMonth
     }
     return true
   })
+}
+
+// Get all holiday themes (for admin display)
+export function getAllHolidayThemes() {
+  return Object.values(SYMBOL_THEMES).filter(theme => theme.seasonal)
 }
 
 function getStoredSettings() {
@@ -164,6 +172,11 @@ function storeSettings(settings) {
 }
 
 export function SettingsProvider({ children }) {
+  const [adminMode, setAdminModeState] = useState(() => {
+    const stored = getStoredSettings()
+    return stored?.adminMode === true
+  })
+
   const [autoEnableHoliday, setAutoEnableHolidayState] = useState(() => {
     const stored = getStoredSettings()
     // Default to true if not set
@@ -199,6 +212,12 @@ export function SettingsProvider({ children }) {
     }
     return 3
   })
+
+  const setAdminMode = (enabled) => {
+    setAdminModeState(enabled)
+    const stored = getStoredSettings() || {}
+    storeSettings({ ...stored, adminMode: enabled })
+  }
 
   const setAutoEnableHoliday = (enabled) => {
     setAutoEnableHolidayState(enabled)
@@ -239,7 +258,10 @@ export function SettingsProvider({ children }) {
     symbolTheme,
     setSymbolTheme,
     currentTheme,
-    availableThemes: getAvailableThemes(),
+    availableThemes: getAvailableThemes(adminMode),
+    allHolidayThemes: getAllHolidayThemes(),
+    adminMode,
+    setAdminMode,
     autoEnableHoliday,
     setAutoEnableHoliday,
     currentHolidayTheme,
