@@ -1,19 +1,23 @@
 import { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useInvitations } from '../hooks/useInvitations'
 import { useToast } from './ui/Toast'
 import { ThemeToggle } from './ThemeToggle'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Avatar, AvatarFallback } from './ui/Avatar'
+import { InviteNotification } from './InviteNotification'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { cn } from '../lib/utils'
 
 export default function Layout() {
   const { profile, signOut, isAnonymous, linkEmailToAnonymous } = useAuth()
+  const { pendingInvite, acceptInvite, declineInvite } = useInvitations()
   const { toast } = useToast()
   const location = useLocation()
+  const navigate = useNavigate()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [upgradeForm, setUpgradeForm] = useState({ email: '', password: '' })
@@ -26,6 +30,27 @@ export default function Layout() {
 
   const handleSignOut = async () => {
     await signOut()
+  }
+
+  const handleAcceptInvite = async () => {
+    const { gameId, error } = await acceptInvite()
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+      })
+    } else if (gameId) {
+      navigate(`/game/${gameId}`)
+    }
+  }
+
+  const handleDeclineInvite = async () => {
+    await declineInvite()
+    toast({
+      title: 'Invite declined',
+      description: 'You declined the game invite.',
+    })
   }
 
   const handleUpgrade = async (e) => {
@@ -226,6 +251,13 @@ export default function Layout() {
           </div>
         </div>
       )}
+
+      {/* Game Invite Notification */}
+      <InviteNotification
+        invite={pendingInvite}
+        onAccept={handleAcceptInvite}
+        onDecline={handleDeclineInvite}
+      />
     </div>
   )
 }

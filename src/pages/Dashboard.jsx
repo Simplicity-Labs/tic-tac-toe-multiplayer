@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Bot, Users, Zap, Brain, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAvailableGames, useCreateGame, useJoinGame } from '../hooks/useGame'
+import { usePresence } from '../hooks/usePresence'
+import { useInvitations } from '../hooks/useInvitations'
 import { useToast } from '../components/ui/Toast'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { StatsCard } from '../components/dashboard/StatsCard'
 import { GameList } from '../components/dashboard/GameList'
+import { OnlineUsersCard } from '../components/dashboard/OnlineUsersCard'
 import { cn } from '../lib/utils'
 
 const DIFFICULTIES = [
@@ -46,6 +49,8 @@ export default function Dashboard() {
   const { games, loading: gamesLoading, refetch } = useAvailableGames()
   const { createGame, loading: createLoading } = useCreateGame()
   const { joinGame, loading: joinLoading } = useJoinGame()
+  const { onlineUsers, isConnected } = usePresence()
+  const { sendInvite, sentInvite } = useInvitations()
   const { toast } = useToast()
   const [showDifficulty, setShowDifficulty] = useState(false)
 
@@ -94,6 +99,24 @@ export default function Dashboard() {
     }
   }
 
+  const handleInvite = async (targetUser) => {
+    const { data, error } = await sendInvite(targetUser)
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: 'Invite sent!',
+        description: `Waiting for ${targetUser.username} to respond...`,
+        variant: 'success',
+      })
+      navigate(`/game/${data.id}`)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Welcome header */}
@@ -110,7 +133,7 @@ export default function Dashboard() {
       <StatsCard profile={profile} />
 
       {/* Action cards */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={handleCreateGame}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -177,6 +200,13 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <OnlineUsersCard
+          onlineUsers={onlineUsers}
+          isConnected={isConnected}
+          onInvite={handleInvite}
+          sentInvite={sentInvite}
+        />
       </div>
 
       {/* Available games */}
