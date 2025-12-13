@@ -11,41 +11,62 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(true) // Start true to prevent flash
 
   useEffect(() => {
-    // Safety timeout - if loading takes more than 5 seconds, stop loading
+    let isMounted = true
+
+    // Safety timeout - if loading takes more than 10 seconds, stop loading
     const timeout = setTimeout(() => {
-      if (loading) {
+      if (isMounted && loading) {
         console.warn('Auth loading timeout - forcing load complete')
         setLoading(false)
         setProfileLoading(false)
       }
-    }, 5000)
+    }, 10000)
 
     // Get initial session
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          setProfileLoading(true)
-          fetchProfile(session.user.id)
-        } else {
-          setLoading(false)
+    const initSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('Error getting session:', error)
+          if (isMounted) {
+            setLoading(false)
+            setProfileLoading(false)
+          }
+          return
         }
-      })
-      .catch((error) => {
-        console.error('Error getting session:', error)
-        setLoading(false)
-      })
+
+        if (isMounted) {
+          setUser(session?.user ?? null)
+        }
+
+        if (session?.user && isMounted) {
+          await fetchProfile(session.user.id)
+        } else if (isMounted) {
+          setLoading(false)
+          setProfileLoading(false)
+        }
+      } catch (error) {
+        console.error('Error in session init:', error)
+        if (isMounted) {
+          setLoading(false)
+          setProfileLoading(false)
+        }
+      }
+    }
+
+    initSession()
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setProfileLoading(true) // Set before user to prevent flash
       setUser(session?.user ?? null)
       if (session?.user) {
-        setProfileLoading(true)
         await fetchProfile(session.user.id)
       } else {
         setProfile(null)
@@ -55,25 +76,37 @@ export function AuthProvider({ children }) {
     })
 
     return () => {
+      isMounted = false
       clearTimeout(timeout)
       subscription.unsubscribe()
     }
   }, [])
 
   async function fetchProfile(userId) {
+    console.log('Fetching profile for user:', userId)
     try {
-      const { data, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      )
+
+      const fetchPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
+
+      console.log('Profile fetch result:', { data, error })
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error)
       }
-      setProfile(data)
+      setProfile(data || null)
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error('Error fetching profile:', error.message)
+      setProfile(null)
     } finally {
       setLoading(false)
       setProfileLoading(false)
