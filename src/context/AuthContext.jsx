@@ -137,7 +137,7 @@ export function AuthProvider({ children }) {
     try {
       // Add timeout to prevent hanging - shorter for background refresh
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), isBackground ? 3000 : 2000)
+        setTimeout(() => reject(new Error('Profile fetch timeout')), isBackground ? 8000 : 5000)
       )
 
       const fetchPromise = supabase
