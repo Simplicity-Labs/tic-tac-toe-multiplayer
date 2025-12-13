@@ -173,7 +173,55 @@ export function useGame(gameId) {
 
       // Update stats if game is over
       if (updates.status === 'completed') {
-        await updateStats(winResult ? user.id : null)
+        if (game.is_ai_game) {
+          // AI game - player wins or draws
+          const difficulty = game.ai_difficulty || 'hard'
+          const diffPrefix = `ai_${difficulty}`
+          const { data: playerProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+
+          if (playerProfile) {
+            const statsUpdates = {}
+            if (winResult) {
+              statsUpdates[`${diffPrefix}_wins`] = (playerProfile[`${diffPrefix}_wins`] || 0) + 1
+              statsUpdates.wins = (playerProfile.wins || 0) + 1
+            } else if (isDraw) {
+              statsUpdates[`${diffPrefix}_draws`] = (playerProfile[`${diffPrefix}_draws`] || 0) + 1
+              statsUpdates.draws = (playerProfile.draws || 0) + 1
+            }
+            await supabase.from('profiles').update(statsUpdates).eq('id', user.id)
+          }
+        } else {
+          // PvP game - update both players
+          const players = [game.player_x, game.player_o].filter(Boolean)
+          for (const playerId of players) {
+            const { data: playerProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', playerId)
+              .single()
+
+            if (playerProfile) {
+              const statsUpdates = {}
+              if (winResult && user.id === playerId) {
+                // This player won
+                statsUpdates.pvp_wins = (playerProfile.pvp_wins || 0) + 1
+                statsUpdates.wins = (playerProfile.wins || 0) + 1
+              } else if (winResult) {
+                // This player lost
+                statsUpdates.pvp_losses = (playerProfile.pvp_losses || 0) + 1
+                statsUpdates.losses = (playerProfile.losses || 0) + 1
+              } else if (isDraw) {
+                statsUpdates.pvp_draws = (playerProfile.pvp_draws || 0) + 1
+                statsUpdates.draws = (playerProfile.draws || 0) + 1
+              }
+              await supabase.from('profiles').update(statsUpdates).eq('id', playerId)
+            }
+          }
+        }
       }
 
       setGame(data)
@@ -223,28 +271,89 @@ export function useGame(gameId) {
     if (!updateError) {
       // Update stats if game is over
       if (updates.status === 'completed') {
-        if (winResult) {
-          // AI won - player lost
-          await supabase
-            .from('profiles')
-            .update({ losses: (profile?.losses || 0) + 1 })
-            .eq('id', user.id)
-        } else if (isDraw) {
-          await supabase
-            .from('profiles')
-            .update({ draws: (profile?.draws || 0) + 1 })
-            .eq('id', user.id)
+        const diffPrefix = `ai_${difficulty}`
+        const { data: playerProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', game.player_x)
+          .single()
+
+        if (playerProfile) {
+          const statsUpdates = {}
+
+          if (winResult) {
+            // AI won - player lost
+            statsUpdates[`${diffPrefix}_losses`] = (playerProfile[`${diffPrefix}_losses`] || 0) + 1
+            statsUpdates.losses = (playerProfile.losses || 0) + 1
+          } else if (isDraw) {
+            statsUpdates[`${diffPrefix}_draws`] = (playerProfile[`${diffPrefix}_draws`] || 0) + 1
+            statsUpdates.draws = (playerProfile.draws || 0) + 1
+          }
+
+          await supabase.from('profiles').update(statsUpdates).eq('id', game.player_x)
         }
       }
       setGame(data)
     }
-  }, [game, profile, user])
+  }, [game])
+
+  // Get stat column names based on game type
+  const getStatColumns = useCallback((isAI, difficulty) => {
+    if (!isAI) {
+      return { wins: 'pvp_wins', losses: 'pvp_losses', draws: 'pvp_draws' }
+    }
+    const diffPrefix = `ai_${difficulty || 'hard'}`
+    return {
+      wins: `${diffPrefix}_wins`,
+      losses: `${diffPrefix}_losses`,
+      draws: `${diffPrefix}_draws`,
+    }
+  }, [])
 
   // Update player stats
   const updateStats = useCallback(
-    async (winnerId) => {
+    async (winnerId, forfeiterId = null) => {
       if (!game) return
 
+      const isAI = game.is_ai_game
+      const difficulty = game.ai_difficulty
+      const statCols = getStatColumns(isAI, difficulty)
+
+      // For AI games, only update the human player's stats
+      if (isAI) {
+        const { data: playerProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', game.player_x)
+          .single()
+
+        if (playerProfile) {
+          const updates = {}
+
+          if (winnerId === null) {
+            // Draw
+            updates[statCols.draws] = (playerProfile[statCols.draws] || 0) + 1
+            updates.draws = (playerProfile.draws || 0) + 1
+          } else if (winnerId === 'ai') {
+            // AI won - player lost
+            updates[statCols.losses] = (playerProfile[statCols.losses] || 0) + 1
+            updates.losses = (playerProfile.losses || 0) + 1
+          } else {
+            // Player won
+            updates[statCols.wins] = (playerProfile[statCols.wins] || 0) + 1
+            updates.wins = (playerProfile.wins || 0) + 1
+          }
+
+          if (forfeiterId === game.player_x) {
+            updates.forfeits = (playerProfile.forfeits || 0) + 1
+          }
+
+          await supabase.from('profiles').update(updates).eq('id', game.player_x)
+        }
+        return
+      }
+
+      // For PvP games, update both players
       const players = [game.player_x, game.player_o].filter(Boolean)
 
       for (const playerId of players) {
@@ -255,43 +364,48 @@ export function useGame(gameId) {
           .single()
 
         if (playerProfile) {
+          const updates = {}
+
           if (winnerId === null) {
             // Draw
-            await supabase
-              .from('profiles')
-              .update({ draws: (playerProfile.draws || 0) + 1 })
-              .eq('id', playerId)
+            updates[statCols.draws] = (playerProfile[statCols.draws] || 0) + 1
+            updates.draws = (playerProfile.draws || 0) + 1
           } else if (winnerId === playerId) {
             // Win
-            await supabase
-              .from('profiles')
-              .update({ wins: (playerProfile.wins || 0) + 1 })
-              .eq('id', playerId)
+            updates[statCols.wins] = (playerProfile[statCols.wins] || 0) + 1
+            updates.wins = (playerProfile.wins || 0) + 1
           } else {
             // Loss
-            await supabase
-              .from('profiles')
-              .update({ losses: (playerProfile.losses || 0) + 1 })
-              .eq('id', playerId)
+            updates[statCols.losses] = (playerProfile[statCols.losses] || 0) + 1
+            updates.losses = (playerProfile.losses || 0) + 1
           }
+
+          if (forfeiterId === playerId) {
+            updates.forfeits = (playerProfile.forfeits || 0) + 1
+          }
+
+          await supabase.from('profiles').update(updates).eq('id', playerId)
         }
       }
     },
-    [game]
+    [game, getStatColumns]
   )
 
-  // Handle timeout (forfeit)
+  // Handle timeout (forfeit by timeout)
   const handleTimeout = useCallback(async () => {
     if (!game || game.status !== 'in_progress') return
 
-    const winner =
-      game.current_turn === game.player_x ? game.player_o : game.player_x
+    const forfeiterId = game.current_turn // Person who timed out
+    const winner = game.is_ai_game
+      ? (forfeiterId === game.player_x ? 'ai' : game.player_x)
+      : (forfeiterId === game.player_x ? game.player_o : game.player_x)
 
     const { data, error: updateError } = await supabase
       .from('games')
       .update({
         status: 'completed',
-        winner: game.is_ai_game ? (game.current_turn === game.player_x ? 'ai' : game.player_x) : winner,
+        winner: winner,
+        forfeit_by: forfeiterId,
         completed_at: new Date().toISOString(),
       })
       .eq('id', game.id)
@@ -299,7 +413,7 @@ export function useGame(gameId) {
       .single()
 
     if (!updateError) {
-      await updateStats(winner)
+      await updateStats(winner, forfeiterId)
       setGame(data)
     }
   }, [game, updateStats])
@@ -327,6 +441,7 @@ export function useGame(gameId) {
     }
 
     // Game is in progress - determine the winner (opponent)
+    const forfeiterId = user.id
     let winner
     if (game.is_ai_game) {
       winner = 'ai'
@@ -339,6 +454,7 @@ export function useGame(gameId) {
       .update({
         status: 'completed',
         winner: winner,
+        forfeit_by: forfeiterId,
         completed_at: new Date().toISOString(),
       })
       .eq('id', game.id)
@@ -350,7 +466,7 @@ export function useGame(gameId) {
     }
 
     // Update stats - forfeiter loses, opponent wins
-    await updateStats(winner)
+    await updateStats(winner, forfeiterId)
 
     setGame(data)
     return { data }
@@ -613,7 +729,7 @@ export function useGameHistory() {
   return { games, loading }
 }
 
-// Hook to fetch global leaderboard
+// Hook to fetch global leaderboard (PvP only)
 export function useLeaderboard(limit = 50) {
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -623,8 +739,16 @@ export function useLeaderboard(limit = 50) {
       setLoading(true)
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, wins, losses, draws')
-        .order('wins', { ascending: false })
+        .select(`
+          id, username,
+          pvp_wins, pvp_losses, pvp_draws,
+          ai_easy_wins, ai_easy_losses, ai_easy_draws,
+          ai_medium_wins, ai_medium_losses, ai_medium_draws,
+          ai_hard_wins, ai_hard_losses, ai_hard_draws,
+          forfeits,
+          wins, losses, draws
+        `)
+        .order('pvp_wins', { ascending: false })
         .limit(limit)
 
       if (error) throw error
