@@ -1,9 +1,11 @@
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { cn } from '../lib/utils'
 
 export default function Settings() {
+  const navigate = useNavigate()
   const {
     symbolTheme,
     setSymbolTheme,
@@ -17,6 +19,13 @@ export default function Settings() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-2 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">Back</span>
+        </button>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <SettingsIcon className="h-6 w-6" />
           Settings

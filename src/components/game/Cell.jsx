@@ -70,7 +70,7 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer, b
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'aspect-square w-full flex items-center justify-center',
+        'aspect-square w-full flex items-center justify-center relative group',
         'bg-white dark:bg-slate-900 rounded-xl',
         'transition-all duration-200',
         'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -82,7 +82,7 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer, b
       {value === 'X' && renderSymbol('X')}
       {value === 'O' && renderSymbol('O')}
       {!value && !disabled && (
-        <span className="text-slate-300 dark:text-slate-600 opacity-0 hover:opacity-100 transition-opacity">
+        <span className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
           {renderSymbol(currentPlayer, true)}
         </span>
       )}
