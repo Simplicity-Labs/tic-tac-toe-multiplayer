@@ -57,7 +57,7 @@ export function InvitationsProvider({ children }) {
           setPendingInvite(null)
         }, INVITE_TIMEOUT)
       })
-      .on('broadcast', { event: 'invite-response' }, ({ payload }) => {
+      .on('broadcast', { event: 'invite-response' }, async ({ payload }) => {
         console.log('Received invite-response:', payload)
         const currentSentInvite = sentInviteRef.current
         console.log('Current sent invite:', currentSentInvite)
@@ -67,9 +67,22 @@ export function InvitationsProvider({ children }) {
             setSentInvite((prev) => (prev ? { ...prev, accepted: true } : null))
           } else {
             console.log('Invite declined!')
+            // Set declined state FIRST so UI can show "declined" reason
             setSentInvite((prev) =>
               prev ? { ...prev, declined: true } : null
             )
+
+            // Then delete the game (sender has permission as creator)
+            console.log('Deleting declined game...')
+            const { error } = await supabase
+              .from('games')
+              .delete()
+              .eq('id', payload.gameId)
+            if (error) {
+              console.error('Failed to delete declined game:', error)
+            } else {
+              console.log('Deleted declined game:', payload.gameId)
+            }
             setTimeout(() => setSentInvite(null), 3000)
           }
         } else {
@@ -164,6 +177,7 @@ export function InvitationsProvider({ children }) {
     async (targetUser) => {
       if (!user || !profile) return { error: 'Not authenticated' }
 
+      console.log('Creating invite game for target user:', targetUser.id)
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
@@ -174,13 +188,16 @@ export function InvitationsProvider({ children }) {
           status: 'waiting',
           is_ai_game: false,
           turn_started_at: new Date().toISOString(),
+          invited_player_id: targetUser.id, // Mark as private invite
         })
         .select()
         .single()
 
       if (gameError) {
+        console.error('Error creating invite game:', gameError)
         return { error: gameError.message }
       }
+      console.log('Created invite game:', game)
 
       try {
         await sendBroadcast(targetUser.id, 'invite', {
@@ -253,7 +270,8 @@ export function InvitationsProvider({ children }) {
 
     setPendingInvite(null)
 
-    await supabase.from('games').delete().eq('id', inviteToDecline.gameId)
+    // Note: The game will be deleted by the sender when they receive the decline notification
+    // (they have RLS permission as the game creator, the decliner does not)
 
     try {
       await sendBroadcast(inviteToDecline.from.id, 'invite-response', {

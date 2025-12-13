@@ -651,8 +651,10 @@ export function useAvailableGames() {
         `)
         .eq('status', 'waiting')
         .neq('player_x', user.id)
+        .is('invited_player_id', null) // Exclude private invites
         .order('created_at', { ascending: false })
 
+      console.log('Available games query result:', { data, error })
       if (error) throw error
       setGames(data || [])
     } catch (err) {
@@ -680,8 +682,12 @@ export function useAvailableGames() {
         },
         (payload) => {
           console.log('Game INSERT:', payload)
-          // Only refetch if the new game is waiting and not ours
-          if (payload.new.status === 'waiting' && payload.new.player_x !== user.id) {
+          // Only refetch if the new game is public (not a private invite), waiting, and not ours
+          if (
+            payload.new.status === 'waiting' &&
+            payload.new.player_x !== user.id &&
+            !payload.new.invited_player_id
+          ) {
             fetchGames()
           }
         }

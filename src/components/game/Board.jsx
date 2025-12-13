@@ -3,6 +3,11 @@ import { Cell } from './Cell'
 import { checkWinner, isEmpty } from '../../lib/gameLogic'
 
 export function Board({ board, onCellClick, disabled, currentPlayer }) {
+  // Guard against undefined/null board (e.g., when game is deleted)
+  if (!board || !Array.isArray(board)) {
+    return null
+  }
+
   const winResult = checkWinner(board)
 
   return (
