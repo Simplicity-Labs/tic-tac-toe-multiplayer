@@ -130,11 +130,11 @@ export default function Leaderboard() {
         <Card>
           <CardHeader className="pb-2">
             <div className="grid grid-cols-12 text-xs font-medium text-slate-500 uppercase tracking-wider px-2">
-              <div className="col-span-1">Rank</div>
-              <div className="col-span-5">Player</div>
+              <div className="col-span-2 sm:col-span-1">Rank</div>
+              <div className="col-span-4 sm:col-span-5">Player</div>
               <div className="col-span-2 text-center">PvP Wins</div>
-              <div className="col-span-2 text-center">W/L/D</div>
-              <div className="col-span-2 text-center">Win %</div>
+              <div className="col-span-2 text-center hidden sm:block">W/L/D</div>
+              <div className="col-span-4 sm:col-span-2 text-center">Win %</div>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -154,11 +154,11 @@ export default function Leaderboard() {
                     !getRankStyle(rank) && 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                   )}
                 >
-                  <div className="col-span-1 flex items-center">
+                  <div className="col-span-2 sm:col-span-1 flex items-center">
                     {getRankIcon(rank)}
                   </div>
-                  <div className="col-span-5 flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
+                  <div className="col-span-4 sm:col-span-5 flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Avatar className="h-8 w-8 shrink-0">
                       <AvatarFallback
                         className={cn(
                           'text-sm',
@@ -184,10 +184,10 @@ export default function Leaderboard() {
                       {player.pvp_wins || 0}
                     </span>
                   </div>
-                  <div className="col-span-2 text-center text-sm text-slate-500">
+                  <div className="col-span-2 text-center text-sm text-slate-500 hidden sm:block">
                     {player.pvp_wins || 0}/{player.pvp_losses || 0}/{player.pvp_draws || 0}
                   </div>
-                  <div className="col-span-2 text-center">
+                  <div className="col-span-4 sm:col-span-2 text-center">
                     <span
                       className={cn(
                         'text-sm font-medium',
