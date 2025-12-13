@@ -1,14 +1,52 @@
 import { useState } from 'react'
 import { Grid3X3, Mail, Lock, User, ArrowRight, UserX } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../context/SettingsContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card'
 import { useToast } from '../components/ui/Toast'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { HolidayDecorations } from '../components/HolidayDecorations'
+import { cn } from '../lib/utils'
+
+// Holiday-specific configurations with punny names
+const HOLIDAY_LOGIN_CONFIG = {
+  newyear: {
+    title: 'Tic Tac Cheers!',
+    subtitle: 'New year, new Xs and Os',
+    logoBg: 'bg-gradient-to-br from-amber-500 to-purple-500',
+  },
+  valentine: {
+    title: 'Xs and Os',
+    subtitle: 'Hugs, kisses, and tic tac toes',
+    logoBg: 'bg-gradient-to-br from-pink-500 to-rose-500',
+  },
+  stpatricks: {
+    title: 'Tic Tac Clover',
+    subtitle: 'Three in a row brings luck, you know',
+    logoBg: 'bg-gradient-to-br from-green-500 to-emerald-500',
+  },
+  easter: {
+    title: 'Tic Tac Hatch',
+    subtitle: 'Get three eggs in a row!',
+    logoBg: 'bg-gradient-to-br from-pink-400 to-purple-400',
+  },
+  halloween: {
+    title: 'Trick or Tic Tac',
+    subtitle: 'Three in a row or face the ghosts',
+    logoBg: 'bg-gradient-to-br from-orange-500 to-purple-600',
+  },
+  christmas: {
+    title: 'Tic Tac Ho Ho Ho',
+    subtitle: "Santa's favorite naughts and crosses",
+    logoBg: 'bg-gradient-to-br from-red-500 to-green-500',
+  },
+}
 
 export default function Login() {
   const { signIn, signUp, signInAnonymously, createProfile, profile, user, profileLoading } = useAuth()
+  const { currentTheme } = useSettings()
   const { toast } = useToast()
   const [mode, setMode] = useState('signin') // 'signin', 'signup', 'username'
   const [loading, setLoading] = useState(false)
@@ -17,6 +55,9 @@ export default function Login() {
     password: '',
     username: '',
   })
+
+  const isHolidayTheme = currentTheme.seasonal
+  const holidayConfig = isHolidayTheme ? HOLIDAY_LOGIN_CONFIG[currentTheme.id] : null
 
   // If user is logged in but no profile (and profile check is complete), show username form
   const showUsernameForm = user && !profile && !profileLoading
@@ -91,22 +132,43 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 relative">
+      {/* Holiday Decorations */}
+      <HolidayDecorations />
+
       {/* Header */}
-      <header className="p-4 flex justify-end">
+      <header className="p-4 flex justify-end relative z-10">
         <ThemeToggle />
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-500 mb-4">
-              <Grid3X3 className="h-10 w-10 text-white" />
+            <div className={cn(
+              "inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4",
+              holidayConfig ? holidayConfig.logoBg : "bg-primary-500"
+            )}>
+              {isHolidayTheme ? (
+                <span className="text-3xl">{currentTheme.x.symbol}</span>
+              ) : (
+                <Grid3X3 className="h-10 w-10 text-white" />
+              )}
             </div>
-            <h1 className="text-3xl font-bold">Tic Tac Toe</h1>
-            <p className="text-slate-500 mt-2">Multiplayer game with friends</p>
+            <h1 className="text-3xl font-bold">
+              {holidayConfig ? holidayConfig.title : 'Tic Tac Toe'}
+            </h1>
+            <p className="text-slate-500 mt-2">
+              {holidayConfig ? holidayConfig.subtitle : 'Multiplayer game with friends'}
+            </p>
+            {isHolidayTheme && (
+              <div className="mt-2 flex justify-center gap-2 text-xl opacity-60">
+                <span>{currentTheme.x.symbol}</span>
+                <span>{currentTheme.o.symbol}</span>
+                <span>{currentTheme.x.symbol}</span>
+              </div>
+            )}
           </div>
 
           {/* Form */}
@@ -262,7 +324,7 @@ export default function Login() {
       </div>
 
       {/* Footer */}
-      <footer className="p-4 text-center text-sm text-slate-500">
+      <footer className="p-4 text-center text-sm text-slate-500 relative z-10">
         Built with React & Supabase
       </footer>
     </div>

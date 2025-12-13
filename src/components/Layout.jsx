@@ -3,22 +3,26 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X, Settings } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useInvitations } from '../context/InvitationsContext'
+import { useSettings } from '../context/SettingsContext'
 import { useToast } from './ui/Toast'
 import { ThemeToggle } from './ThemeToggle'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Avatar, AvatarFallback } from './ui/Avatar'
 import { InviteNotification } from './InviteNotification'
+import { HolidayDecorations, HolidayHeaderBar } from './HolidayDecorations'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { cn } from '../lib/utils'
 
 export default function Layout() {
   const { user, profile, signOut, isAnonymous, linkEmailToAnonymous } = useAuth()
   const { pendingInvite, sentInvite, acceptInvite, declineInvite } = useInvitations()
+  const { currentTheme } = useSettings()
   const { toast } = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const isHolidayTheme = currentTheme.seasonal
 
   // Show toast when invite is declined (Game page handles the overlay)
   useEffect(() => {
@@ -89,19 +93,63 @@ export default function Layout() {
     }
   }
 
+  // Get holiday-specific logo icon
+  const getHolidayIcon = () => {
+    if (!isHolidayTheme) return null
+    return currentTheme.x.symbol
+  }
+
+  // Get holiday-specific logo background
+  const getHolidayLogoBg = () => {
+    const bgColors = {
+      newyear: 'bg-gradient-to-br from-amber-500 to-purple-500',
+      valentine: 'bg-gradient-to-br from-pink-500 to-rose-500',
+      stpatricks: 'bg-gradient-to-br from-green-500 to-emerald-500',
+      easter: 'bg-gradient-to-br from-pink-400 to-purple-400',
+      halloween: 'bg-gradient-to-br from-orange-500 to-purple-600',
+      christmas: 'bg-gradient-to-br from-red-500 to-green-500',
+    }
+    return bgColors[currentTheme.id] || 'bg-primary-500'
+  }
+
+  // Get holiday-specific title
+  const getHolidayTitle = () => {
+    const titles = {
+      newyear: 'Tic Tac Cheers!',
+      valentine: 'Xs and Os',
+      stpatricks: 'Tic Tac Clover',
+      easter: 'Tic Tac Hatch',
+      halloween: 'Trick or Tic Tac',
+      christmas: 'Tic Tac Ho Ho Ho',
+    }
+    return titles[currentTheme.id] || 'Tic Tac Toe'
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 relative">
+      {/* Holiday Decorations */}
+      <HolidayDecorations />
+
       {/* Header */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        {/* Holiday accent bar */}
+        <HolidayHeaderBar />
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center">
-                <Grid3X3 className="h-6 w-6 text-white" />
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                isHolidayTheme ? getHolidayLogoBg() : "bg-primary-500"
+              )}>
+                {isHolidayTheme ? (
+                  <span className="text-xl">{getHolidayIcon()}</span>
+                ) : (
+                  <Grid3X3 className="h-6 w-6 text-white" />
+                )}
               </div>
               <span className="text-xl font-bold hidden md:block">
-                Tic Tac Toe
+                {isHolidayTheme ? getHolidayTitle() : 'Tic Tac Toe'}
               </span>
             </Link>
 

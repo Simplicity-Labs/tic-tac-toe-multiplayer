@@ -20,16 +20,16 @@ export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite
             </div>
             Online Players
           </div>
-          <Badge variant={isConnected ? 'success' : 'secondary'} className="ml-2">
-            {isConnected ? (
-              <>
-                <span className="w-2 h-2 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
-                {otherUsers.length} online
-              </>
-            ) : (
-              'Connecting...'
-            )}
-          </Badge>
+          {isConnected ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              {otherUsers.length} online
+            </span>
+          ) : (
+            <Badge variant="secondary" className="ml-2">
+              Connecting...
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
