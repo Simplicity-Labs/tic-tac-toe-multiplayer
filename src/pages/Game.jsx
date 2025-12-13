@@ -82,7 +82,8 @@ export default function Game() {
   }
 
   const handlePlayAgain = async () => {
-    const { data, error } = await createGame(true)
+    const difficulty = game?.ai_difficulty || 'hard'
+    const { data, error } = await createGame(true, difficulty)
     if (error) {
       toast({
         title: 'Error',

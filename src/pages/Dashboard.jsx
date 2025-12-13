@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Bot, Users } from 'lucide-react'
+import { Plus, Bot, Users, Zap, Brain, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAvailableGames, useCreateGame, useJoinGame } from '../hooks/useGame'
 import { useToast } from '../components/ui/Toast'
@@ -8,6 +8,37 @@ import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { StatsCard } from '../components/dashboard/StatsCard'
 import { GameList } from '../components/dashboard/GameList'
+import { cn } from '../lib/utils'
+
+const DIFFICULTIES = [
+  {
+    id: 'easy',
+    name: 'Easy',
+    description: 'Random moves, great for beginners',
+    icon: Sparkles,
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+    hoverBg: 'hover:bg-emerald-500',
+  },
+  {
+    id: 'medium',
+    name: 'Medium',
+    description: 'Smart but beatable',
+    icon: Zap,
+    color: 'text-amber-500',
+    bg: 'bg-amber-100 dark:bg-amber-900/30',
+    hoverBg: 'hover:bg-amber-500',
+  },
+  {
+    id: 'hard',
+    name: 'Hard',
+    description: 'Unbeatable AI (minimax)',
+    icon: Brain,
+    color: 'text-rose-500',
+    bg: 'bg-rose-100 dark:bg-rose-900/30',
+    hoverBg: 'hover:bg-rose-500',
+  },
+]
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -16,6 +47,7 @@ export default function Dashboard() {
   const { createGame, loading: createLoading } = useCreateGame()
   const { joinGame, loading: joinLoading } = useJoinGame()
   const { toast } = useToast()
+  const [showDifficulty, setShowDifficulty] = useState(false)
 
   const handleCreateGame = async () => {
     const { data, error } = await createGame(false)
@@ -35,8 +67,8 @@ export default function Dashboard() {
     }
   }
 
-  const handlePlayAI = async () => {
-    const { data, error } = await createGame(true)
+  const handlePlayAI = async (difficulty) => {
+    const { data, error } = await createGame(true, difficulty)
     if (error) {
       toast({
         title: 'Error',
@@ -99,23 +131,50 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={handlePlayAI}>
+        <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                <Bot className="h-5 w-5 text-amber-500 group-hover:text-white" />
+              <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Bot className="h-5 w-5 text-amber-500" />
               </div>
               Play vs AI
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-slate-500 mb-4">
-              Challenge our unbeatable AI opponent
+              Choose your difficulty level
             </p>
-            <Button variant="secondary" disabled={createLoading} className="w-full">
-              <Bot className="h-4 w-4 mr-2" />
-              {createLoading ? 'Starting...' : 'Play AI'}
-            </Button>
+
+            {/* Difficulty buttons */}
+            <div className="grid grid-cols-3 gap-2">
+              {DIFFICULTIES.map((diff) => (
+                <button
+                  key={diff.id}
+                  onClick={() => handlePlayAI(diff.id)}
+                  disabled={createLoading}
+                  className={cn(
+                    'flex flex-col items-center gap-1 p-3 rounded-lg transition-all',
+                    'border-2 border-transparent',
+                    diff.bg,
+                    'hover:border-current hover:scale-105',
+                    'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
+                    diff.color
+                  )}
+                >
+                  <diff.icon className="h-5 w-5" />
+                  <span className="text-xs font-semibold">{diff.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Difficulty descriptions */}
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              {DIFFICULTIES.map((diff) => (
+                <p key={diff.id} className="text-[10px] text-slate-400 leading-tight">
+                  {diff.description}
+                </p>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>

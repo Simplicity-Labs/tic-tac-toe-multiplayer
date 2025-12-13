@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   checkWinner,
   checkDraw,
-  getBestMove,
+  getAIMove,
   createEmptyBoard,
   isEmpty,
 } from '../lib/gameLogic'
@@ -178,7 +178,8 @@ export function useGame(gameId) {
   const makeAIMove = useCallback(async () => {
     if (!game || game.status !== 'in_progress') return
 
-    const aiPosition = getBestMove(game.board)
+    const difficulty = game.ai_difficulty || 'hard'
+    const aiPosition = getAIMove(game.board, difficulty)
     if (aiPosition === null) return
 
     const newBoard = [...game.board]
@@ -327,7 +328,7 @@ export function useCreateGame() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
 
-  const createGame = async (isAI = false) => {
+  const createGame = async (isAI = false, aiDifficulty = 'hard') => {
     if (!user) return { error: 'Not authenticated' }
 
     setLoading(true)
@@ -342,6 +343,7 @@ export function useCreateGame() {
           current_turn: user.id,
           status: isAI ? 'in_progress' : 'waiting',
           is_ai_game: isAI,
+          ai_difficulty: isAI ? aiDifficulty : null,
           turn_started_at: new Date().toISOString(),
         })
         .select()

@@ -107,6 +107,52 @@ export function getRandomMove(board) {
   return available[Math.floor(Math.random() * available.length)]
 }
 
+// Medium AI - mix of smart and random moves
+export function getMediumMove(board) {
+  const available = getAvailableMoves(board)
+
+  // 60% chance to make a smart move, 40% random
+  if (Math.random() < 0.6) {
+    // Check if AI can win
+    for (const move of available) {
+      const testBoard = [...board]
+      testBoard[move] = 'O'
+      if (checkWinner(testBoard)) return move
+    }
+
+    // Block player from winning
+    for (const move of available) {
+      const testBoard = [...board]
+      testBoard[move] = 'X'
+      if (checkWinner(testBoard)) return move
+    }
+
+    // Take center if available
+    if (isEmpty(board[4])) return 4
+
+    // Take a corner
+    const corners = [0, 2, 6, 8].filter(i => isEmpty(board[i]))
+    if (corners.length > 0) {
+      return corners[Math.floor(Math.random() * corners.length)]
+    }
+  }
+
+  return getRandomMove(board)
+}
+
+// Get AI move based on difficulty
+export function getAIMove(board, difficulty = 'hard') {
+  switch (difficulty) {
+    case 'easy':
+      return getRandomMove(board)
+    case 'medium':
+      return getMediumMove(board)
+    case 'hard':
+    default:
+      return getBestMove(board)
+  }
+}
+
 // Create an empty board
 export function createEmptyBoard() {
   return Array(9).fill('')

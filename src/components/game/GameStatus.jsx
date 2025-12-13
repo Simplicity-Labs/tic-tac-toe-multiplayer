@@ -63,12 +63,19 @@ export function GameStatus({
         isCurrentTurn={!currentTurnIsX && game?.status === 'in_progress'}
         isCurrentUser={!isPlayerX}
         isAI={game?.is_ai_game}
+        aiDifficulty={game?.ai_difficulty}
       />
     </div>
   )
 }
 
-function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI }) {
+const DIFFICULTY_LABELS = {
+  easy: 'Easy Mode',
+  medium: 'Medium Mode',
+  hard: 'Unbeatable',
+}
+
+function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDifficulty }) {
   return (
     <div
       className={cn(
@@ -111,7 +118,7 @@ function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI }) {
         </span>
         <span className="text-xs text-slate-500">
           {isCurrentUser && '(You)'}
-          {isAI && 'Unbeatable'}
+          {isAI && (DIFFICULTY_LABELS[aiDifficulty] || 'Unbeatable')}
         </span>
       </div>
     </div>

@@ -45,6 +45,7 @@ CREATE TABLE games (
   status TEXT DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_progress', 'completed')),
   winner TEXT, -- Can be UUID of winner, 'ai', or NULL for draw
   is_ai_game BOOLEAN DEFAULT FALSE,
+  ai_difficulty TEXT DEFAULT 'hard' CHECK (ai_difficulty IN ('easy', 'medium', 'hard')),
   turn_started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   completed_at TIMESTAMP WITH TIME ZONE
