@@ -28,8 +28,8 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/login" replace />
   }
 
-  // User exists but no profile - redirect to login to create profile
-  if (!profile) {
+  // User exists but no profile (and no cache) - redirect to login to create profile
+  if (!profile && !cachedProfile) {
     return <Navigate to="/login" replace />
   }
 
@@ -54,8 +54,9 @@ function PublicRoute({ children }) {
     )
   }
 
-  // Only redirect to dashboard if user has both auth AND profile
-  if (user && profile) {
+  // Redirect to dashboard if user has auth AND profile (from state or cache)
+  // Using cache as fallback prevents flash when state is briefly out of sync
+  if (user && (profile || cachedProfile)) {
     return <Navigate to="/" replace />
   }
 
