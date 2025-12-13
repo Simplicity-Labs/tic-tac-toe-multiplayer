@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Trophy, Medal, Award, RefreshCw, User, X, Users, Bot, Sparkles, Zap, Brain, Flag } from 'lucide-react'
+import { Trophy, Medal, Award, RefreshCw, User, X, Users, Sparkles, Zap, Brain } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLeaderboard } from '../hooks/useGame'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { Avatar, AvatarFallback } from '../components/ui/Avatar'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -34,7 +34,6 @@ export default function Leaderboard() {
   }
 
   const StatRow = ({ label, icon: Icon, iconColor, wins, losses, draws }) => {
-    const total = (wins || 0) + (losses || 0) + (draws || 0)
     const winRate = calculateWinRate(wins, losses, draws)
 
     return (
