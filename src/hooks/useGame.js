@@ -80,13 +80,21 @@ export function useGame(gameId) {
             setGame(payload.new)
 
             // Fetch player O profile if it just joined
-            if (payload.new.player_o && !playerO) {
-              const { data: oProfile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', payload.new.player_o)
-                .single()
-              setPlayerO(oProfile)
+            if (payload.new.player_o) {
+              setPlayerO((currentPlayerO) => {
+                // Only fetch if we don't have the profile yet
+                if (!currentPlayerO) {
+                  supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', payload.new.player_o)
+                    .single()
+                    .then(({ data: oProfile }) => {
+                      if (oProfile) setPlayerO(oProfile)
+                    })
+                }
+                return currentPlayerO
+              })
             }
           }
         }
@@ -96,7 +104,7 @@ export function useGame(gameId) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [gameId, fetchGame, playerO])
+  }, [gameId, fetchGame])
 
   // Make a move
   const makeMove = useCallback(
