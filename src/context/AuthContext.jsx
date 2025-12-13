@@ -9,7 +9,8 @@ export function useAuth() {
 
 const PROFILE_CACHE_KEY = 'tic-tac-toe-profile-cache'
 
-function getCachedProfile() {
+// Export for use in routing
+export function getCachedProfile() {
   try {
     const cached = localStorage.getItem(PROFILE_CACHE_KEY)
     if (cached) {

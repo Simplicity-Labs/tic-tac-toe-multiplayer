@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './context/AuthContext'
+import { useAuth, getCachedProfile } from './context/AuthContext'
 import Layout from './components/Layout'
+import { DashboardSkeleton } from './components/DashboardSkeleton'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Game from './pages/Game'
@@ -8,10 +9,16 @@ import History from './pages/History'
 
 function ProtectedRoute({ children }) {
   const { user, profile, loading, profileLoading } = useAuth()
+  const cachedProfile = getCachedProfile()
 
+  // Show skeleton if we have cached profile (likely returning user)
   if (loading || profileLoading) {
+    if (cachedProfile) {
+      return <DashboardSkeleton />
+    }
+    // No cache - show minimal spinner (likely new user)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     )
@@ -31,10 +38,17 @@ function ProtectedRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { user, profile, loading, profileLoading } = useAuth()
+  const cachedProfile = getCachedProfile()
 
+  // If we have a cached profile, show skeleton and wait for auth to confirm
+  // This prevents the login page flash
   if (loading || profileLoading) {
+    if (cachedProfile) {
+      return <DashboardSkeleton />
+    }
+    // No cache - show minimal spinner briefly
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     )
