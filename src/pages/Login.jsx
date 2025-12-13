@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Grid3X3, Mail, Lock, User, ArrowRight } from 'lucide-react'
+import { Grid3X3, Mail, Lock, User, ArrowRight, UserX } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -8,7 +8,7 @@ import { useToast } from '../components/ui/Toast'
 import { ThemeToggle } from '../components/ThemeToggle'
 
 export default function Login() {
-  const { signIn, signUp, createProfile, profile, user, profileLoading } = useAuth()
+  const { signIn, signUp, signInAnonymously, createProfile, profile, user, profileLoading } = useAuth()
   const { toast } = useToast()
   const [mode, setMode] = useState('signin') // 'signin', 'signup', 'username'
   const [loading, setLoading] = useState(false)
@@ -59,6 +59,22 @@ export default function Login() {
             variant: 'success',
           })
         }
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGuestLogin = async () => {
+    setLoading(true)
+    try {
+      const { error } = await signInAnonymously()
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        })
       }
     } finally {
       setLoading(false)
@@ -205,22 +221,40 @@ export default function Login() {
               </form>
 
               {!showUsernameForm && (
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-slate-500">
-                    {mode === 'signin'
-                      ? "Don't have an account?"
-                      : 'Already have an account?'}
-                    <button
+                <>
+                  <div className="mt-6 text-center">
+                    <p className="text-sm text-slate-500">
+                      {mode === 'signin'
+                        ? "Don't have an account?"
+                        : 'Already have an account?'}
+                      <button
+                        type="button"
+                        className="ml-1 text-primary-500 hover:underline font-medium"
+                        onClick={() =>
+                          setMode(mode === 'signin' ? 'signup' : 'signin')
+                        }
+                      >
+                        {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                      </button>
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <Button
                       type="button"
-                      className="ml-1 text-primary-500 hover:underline font-medium"
-                      onClick={() =>
-                        setMode(mode === 'signin' ? 'signup' : 'signin')
-                      }
+                      variant="ghost"
+                      className="w-full"
+                      onClick={handleGuestLogin}
+                      disabled={loading}
                     >
-                      {mode === 'signin' ? 'Sign up' : 'Sign in'}
-                    </button>
-                  </p>
-                </div>
+                      <UserX className="h-4 w-4 mr-2" />
+                      Play as Guest
+                    </Button>
+                    <p className="text-xs text-slate-400 text-center mt-2">
+                      You can create an account later to save your progress
+                    </p>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

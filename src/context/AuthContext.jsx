@@ -99,6 +99,23 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
+  async function signInAnonymously() {
+    const { data, error } = await supabase.auth.signInAnonymously()
+    return { data, error }
+  }
+
+  async function linkEmailToAnonymous(email, password) {
+    // Convert anonymous account to a permanent one
+    const { data, error } = await supabase.auth.updateUser({
+      email,
+      password,
+    })
+    if (!error && data.user) {
+      setUser(data.user)
+    }
+    return { data, error }
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     if (!error) {
@@ -151,8 +168,11 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     profileLoading,
+    isAnonymous: user?.is_anonymous ?? false,
     signUp,
     signIn,
+    signInAnonymously,
+    linkEmailToAnonymous,
     signOut,
     createProfile,
     updateProfile,
