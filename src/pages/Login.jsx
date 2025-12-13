@@ -8,7 +8,7 @@ import { useToast } from '../components/ui/Toast'
 import { ThemeToggle } from '../components/ThemeToggle'
 
 export default function Login() {
-  const { signIn, signUp, createProfile, profile, user } = useAuth()
+  const { signIn, signUp, createProfile, profile, user, profileLoading } = useAuth()
   const { toast } = useToast()
   const [mode, setMode] = useState('signin') // 'signin', 'signup', 'username'
   const [loading, setLoading] = useState(false)
@@ -18,8 +18,8 @@ export default function Login() {
     username: '',
   })
 
-  // If user is logged in but no profile, show username form
-  const showUsernameForm = user && !profile
+  // If user is logged in but no profile (and profile check is complete), show username form
+  const showUsernameForm = user && !profile && !profileLoading
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -63,6 +63,15 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading while checking for existing profile
+  if (user && profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    )
   }
 
   return (
