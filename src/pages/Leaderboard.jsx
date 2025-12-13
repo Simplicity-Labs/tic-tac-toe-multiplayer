@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trophy, Medal, Award, RefreshCw, User, X, Users, Sparkles, Zap, Brain } from 'lucide-react'
+import { Trophy, Medal, Award, RefreshCw, User, X, Users, Sparkles, Zap, Brain, Calendar, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLeaderboard } from '../hooks/useGame'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
@@ -10,7 +10,8 @@ import { cn } from '../lib/utils'
 
 export default function Leaderboard() {
   const { user } = useAuth()
-  const { players, loading, refetch } = useLeaderboard()
+  const [period, setPeriod] = useState('all-time')
+  const { players, loading, refetch } = useLeaderboard(50, period)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
 
   const getRankIcon = (rank) => {
@@ -76,6 +77,34 @@ export default function Leaderboard() {
         </Button>
       </div>
 
+      {/* Period Tabs */}
+      <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
+        <button
+          onClick={() => setPeriod('all-time')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
+            period === 'all-time'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          <Clock className="h-4 w-4" />
+          All Time
+        </button>
+        <button
+          onClick={() => setPeriod('this-month')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors',
+            period === 'this-month'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          )}
+        >
+          <Calendar className="h-4 w-4" />
+          This Month
+        </button>
+      </div>
+
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -89,8 +118,12 @@ export default function Leaderboard() {
         <Card>
           <CardContent className="py-12 text-center">
             <Trophy className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-500">No players yet</p>
-            <p className="text-sm text-slate-400">Be the first to play!</p>
+            <p className="text-slate-500">
+              {period === 'this-month' ? 'No games this month' : 'No players yet'}
+            </p>
+            <p className="text-sm text-slate-400">
+              {period === 'this-month' ? 'Play a PvP game to get on the board!' : 'Be the first to play!'}
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -186,7 +219,9 @@ export default function Leaderboard() {
                 </Avatar>
                 <div>
                   <h2 className="text-xl font-bold">{selectedPlayer.username}</h2>
-                  <p className="text-sm text-slate-500">Detailed Stats</p>
+                  <p className="text-sm text-slate-500">
+                    {period === 'this-month' ? 'This Month Stats' : 'All Time Stats'}
+                  </p>
                 </div>
               </div>
               <button
@@ -198,32 +233,36 @@ export default function Leaderboard() {
             </div>
 
             <div className="space-y-4">
-              {/* Overall Stats */}
-              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Overall</h3>
-                <div className="flex items-center justify-between">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{selectedPlayer.wins || 0}</p>
-                    <p className="text-xs text-slate-500">Wins</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{selectedPlayer.losses || 0}</p>
-                    <p className="text-xs text-slate-500">Losses</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{selectedPlayer.draws || 0}</p>
-                    <p className="text-xs text-slate-500">Draws</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{selectedPlayer.forfeits || 0}</p>
-                    <p className="text-xs text-slate-500">Forfeits</p>
+              {/* Overall Stats - only show for all-time */}
+              {period === 'all-time' && (
+                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Overall</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{selectedPlayer.wins || 0}</p>
+                      <p className="text-xs text-slate-500">Wins</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{selectedPlayer.losses || 0}</p>
+                      <p className="text-xs text-slate-500">Losses</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-slate-600 dark:text-slate-400">{selectedPlayer.draws || 0}</p>
+                      <p className="text-xs text-slate-500">Draws</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{selectedPlayer.forfeits || 0}</p>
+                      <p className="text-xs text-slate-500">Forfeits</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* PvP Stats */}
               <div>
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Player vs Player</h3>
+                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Player vs Player {period === 'this-month' && '(This Month)'}
+                </h3>
                 <StatRow
                   label="Against Players"
                   icon={Users}
@@ -234,34 +273,36 @@ export default function Leaderboard() {
                 />
               </div>
 
-              {/* AI Stats */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Player vs AI</h3>
-                <StatRow
-                  label="Easy AI"
-                  icon={Sparkles}
-                  iconColor="text-emerald-500"
-                  wins={selectedPlayer.ai_easy_wins}
-                  losses={selectedPlayer.ai_easy_losses}
-                  draws={selectedPlayer.ai_easy_draws}
-                />
-                <StatRow
-                  label="Medium AI"
-                  icon={Zap}
-                  iconColor="text-amber-500"
-                  wins={selectedPlayer.ai_medium_wins}
-                  losses={selectedPlayer.ai_medium_losses}
-                  draws={selectedPlayer.ai_medium_draws}
-                />
-                <StatRow
-                  label="Hard AI"
-                  icon={Brain}
-                  iconColor="text-rose-500"
-                  wins={selectedPlayer.ai_hard_wins}
-                  losses={selectedPlayer.ai_hard_losses}
-                  draws={selectedPlayer.ai_hard_draws}
-                />
-              </div>
+              {/* AI Stats - only show for all-time */}
+              {period === 'all-time' && (
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Player vs AI</h3>
+                  <StatRow
+                    label="Easy AI"
+                    icon={Sparkles}
+                    iconColor="text-emerald-500"
+                    wins={selectedPlayer.ai_easy_wins}
+                    losses={selectedPlayer.ai_easy_losses}
+                    draws={selectedPlayer.ai_easy_draws}
+                  />
+                  <StatRow
+                    label="Medium AI"
+                    icon={Zap}
+                    iconColor="text-amber-500"
+                    wins={selectedPlayer.ai_medium_wins}
+                    losses={selectedPlayer.ai_medium_losses}
+                    draws={selectedPlayer.ai_medium_draws}
+                  />
+                  <StatRow
+                    label="Hard AI"
+                    icon={Brain}
+                    iconColor="text-rose-500"
+                    wins={selectedPlayer.ai_hard_wins}
+                    losses={selectedPlayer.ai_hard_losses}
+                    draws={selectedPlayer.ai_hard_draws}
+                  />
+                </div>
+              )}
             </div>
 
             <Button

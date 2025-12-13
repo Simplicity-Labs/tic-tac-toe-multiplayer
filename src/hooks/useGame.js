@@ -730,47 +730,107 @@ export function useGameHistory() {
 }
 
 // Hook to fetch global leaderboard (PvP only)
-export function useLeaderboard(limit = 50) {
+export function useLeaderboard(limit = 50, period = 'all-time') {
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(true)
 
   const fetchLeaderboard = useCallback(async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id, username,
-          pvp_wins, pvp_losses, pvp_draws,
-          ai_easy_wins, ai_easy_losses, ai_easy_draws,
-          ai_medium_wins, ai_medium_losses, ai_medium_draws,
-          ai_hard_wins, ai_hard_losses, ai_hard_draws,
-          forfeits,
-          wins, losses, draws
-        `)
-        .order('pvp_wins', { ascending: false })
-        .limit(limit)
 
-      if (error) throw error
-      setPlayers(data || [])
+      if (period === 'all-time') {
+        // All-time stats from profiles
+        const { data, error } = await supabase
+          .from('profiles')
+          .select(`
+            id, username,
+            pvp_wins, pvp_losses, pvp_draws,
+            ai_easy_wins, ai_easy_losses, ai_easy_draws,
+            ai_medium_wins, ai_medium_losses, ai_medium_draws,
+            ai_hard_wins, ai_hard_losses, ai_hard_draws,
+            forfeits,
+            wins, losses, draws
+          `)
+          .order('pvp_wins', { ascending: false })
+          .limit(limit)
+
+        if (error) throw error
+        setPlayers(data || [])
+      } else if (period === 'this-month') {
+        // Monthly stats calculated from games
+        const startOfMonth = new Date()
+        startOfMonth.setDate(1)
+        startOfMonth.setHours(0, 0, 0, 0)
+
+        // Fetch completed PvP games from this month
+        const { data: games, error: gamesError } = await supabase
+          .from('games')
+          .select(`
+            id, player_x, player_o, winner, is_ai_game,
+            player_x_profile:profiles!games_player_x_fkey(id, username),
+            player_o_profile:profiles!games_player_o_fkey(id, username)
+          `)
+          .eq('status', 'completed')
+          .eq('is_ai_game', false)
+          .gte('completed_at', startOfMonth.toISOString())
+
+        if (gamesError) throw gamesError
+
+        // Calculate stats per player
+        const playerStats = {}
+
+        for (const game of games || []) {
+          const players = [
+            { id: game.player_x, profile: game.player_x_profile },
+            { id: game.player_o, profile: game.player_o_profile },
+          ].filter((p) => p.id && p.profile)
+
+          for (const player of players) {
+            if (!playerStats[player.id]) {
+              playerStats[player.id] = {
+                id: player.id,
+                username: player.profile.username,
+                pvp_wins: 0,
+                pvp_losses: 0,
+                pvp_draws: 0,
+              }
+            }
+
+            if (game.winner === null) {
+              playerStats[player.id].pvp_draws++
+            } else if (game.winner === player.id) {
+              playerStats[player.id].pvp_wins++
+            } else {
+              playerStats[player.id].pvp_losses++
+            }
+          }
+        }
+
+        // Convert to array and sort by wins
+        const sortedPlayers = Object.values(playerStats).sort(
+          (a, b) => b.pvp_wins - a.pvp_wins
+        )
+
+        setPlayers(sortedPlayers.slice(0, limit))
+      }
     } catch (err) {
       console.error('Error fetching leaderboard:', err)
     } finally {
       setLoading(false)
     }
-  }, [limit])
+  }, [limit, period])
 
   useEffect(() => {
     fetchLeaderboard()
 
     const channel = supabase
-      .channel('leaderboard')
+      .channel(`leaderboard-${period}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
-          table: 'profiles',
+          table: period === 'all-time' ? 'profiles' : 'games',
         },
         () => {
           fetchLeaderboard()
@@ -781,7 +841,7 @@ export function useLeaderboard(limit = 50) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchLeaderboard])
+  }, [fetchLeaderboard, period])
 
   return { players, loading, refetch: fetchLeaderboard }
 }
