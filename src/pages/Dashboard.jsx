@@ -1,13 +1,13 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Bot, Users, Zap, Brain, Sparkles } from 'lucide-react'
+import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useAvailableGames, useCreateGame, useJoinGame } from '../hooks/useGame'
+import { useAvailableGames, useCreateGame, useJoinGame, useActiveGame } from '../hooks/useGame'
 import { usePresence } from '../hooks/usePresence'
 import { useInvitations } from '../hooks/useInvitations'
 import { useToast } from '../components/ui/Toast'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import { Badge } from '../components/ui/Badge'
 import { StatsCard } from '../components/dashboard/StatsCard'
 import { GameList } from '../components/dashboard/GameList'
 import { OnlineUsersCard } from '../components/dashboard/OnlineUsersCard'
@@ -49,19 +49,28 @@ export default function Dashboard() {
   const { games, loading: gamesLoading, refetch } = useAvailableGames()
   const { createGame, loading: createLoading } = useCreateGame()
   const { joinGame, loading: joinLoading } = useJoinGame()
+  const { activeGame, refetch: refetchActiveGame } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
   const { toast } = useToast()
-  const [showDifficulty, setShowDifficulty] = useState(false)
 
   const handleCreateGame = async () => {
-    const { data, error } = await createGame(false)
+    const { data, error, existingGameId } = await createGame(false)
     if (error) {
-      toast({
-        title: 'Error',
-        description: error,
-        variant: 'destructive',
-      })
+      if (existingGameId) {
+        toast({
+          title: 'Active game exists',
+          description: 'Redirecting to your current game...',
+          variant: 'warning',
+        })
+        navigate(`/game/${existingGameId}`)
+      } else {
+        toast({
+          title: 'Error',
+          description: error,
+          variant: 'destructive',
+        })
+      }
     } else {
       toast({
         title: 'Game created!',
@@ -73,13 +82,22 @@ export default function Dashboard() {
   }
 
   const handlePlayAI = async (difficulty) => {
-    const { data, error } = await createGame(true, difficulty)
+    const { data, error, existingGameId } = await createGame(true, difficulty)
     if (error) {
-      toast({
-        title: 'Error',
-        description: error,
-        variant: 'destructive',
-      })
+      if (existingGameId) {
+        toast({
+          title: 'Active game exists',
+          description: 'Redirecting to your current game...',
+          variant: 'warning',
+        })
+        navigate(`/game/${existingGameId}`)
+      } else {
+        toast({
+          title: 'Error',
+          description: error,
+          variant: 'destructive',
+        })
+      }
     } else {
       navigate(`/game/${data.id}`)
     }
@@ -134,27 +152,63 @@ export default function Dashboard() {
 
       {/* Action cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={handleCreateGame}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center group-hover:bg-primary-500 group-hover:text-white transition-colors">
-                <Plus className="h-5 w-5 text-primary-500 group-hover:text-white" />
-              </div>
-              Create New Game
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-500 mb-4">
-              Start a new game and wait for someone to join
-            </p>
-            <Button disabled={createLoading} className="w-full">
-              <Users className="h-4 w-4 mr-2" />
-              {createLoading ? 'Creating...' : 'Create Game'}
-            </Button>
-          </CardContent>
-        </Card>
+        {activeGame ? (
+          <Card className="hover:shadow-md transition-shadow cursor-pointer group border-2 border-primary-500" onClick={() => navigate(`/game/${activeGame.id}`)}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-primary-500 flex items-center justify-center">
+                  <Play className="h-5 w-5 text-white" />
+                </div>
+                Active Game
+                <Badge variant={activeGame.status === 'waiting' ? 'warning' : 'success'} className="ml-auto">
+                  {activeGame.status === 'waiting' ? (
+                    <>
+                      <Clock className="h-3 w-3 mr-1" />
+                      Waiting
+                    </>
+                  ) : (
+                    'In Progress'
+                  )}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-500 mb-4">
+                {activeGame.status === 'waiting'
+                  ? 'Waiting for an opponent to join your game'
+                  : activeGame.is_ai_game
+                    ? `Playing against AI (${activeGame.ai_difficulty})`
+                    : 'Game in progress with another player'}
+              </p>
+              <Button className="w-full">
+                <Play className="h-4 w-4 mr-2" />
+                Continue Game
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="hover:shadow-md transition-shadow cursor-pointer group" onClick={handleCreateGame}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center group-hover:bg-primary-500 group-hover:text-white transition-colors">
+                  <Plus className="h-5 w-5 text-primary-500 group-hover:text-white" />
+                </div>
+                Create New Game
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-500 mb-4">
+                Start a new game and wait for someone to join
+              </p>
+              <Button disabled={createLoading} className="w-full">
+                <Users className="h-4 w-4 mr-2" />
+                {createLoading ? 'Creating...' : 'Create Game'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card className="hover:shadow-md transition-shadow">
+        <Card className={cn("hover:shadow-md transition-shadow", activeGame && "opacity-60")}>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -165,7 +219,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-slate-500 mb-4">
-              Choose your difficulty level
+              {activeGame ? 'Finish your current game first' : 'Choose your difficulty level'}
             </p>
 
             {/* Difficulty buttons */}
@@ -174,7 +228,7 @@ export default function Dashboard() {
                 <button
                   key={diff.id}
                   onClick={() => handlePlayAI(diff.id)}
-                  disabled={createLoading}
+                  disabled={createLoading || activeGame}
                   className={cn(
                     'flex flex-col items-center gap-1 p-3 rounded-lg transition-all',
                     'border-2 border-transparent',
@@ -206,6 +260,7 @@ export default function Dashboard() {
           isConnected={isConnected}
           onInvite={handleInvite}
           sentInvite={sentInvite}
+          disabled={!!activeGame}
         />
       </div>
 

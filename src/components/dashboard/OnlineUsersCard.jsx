@@ -5,13 +5,13 @@ import { Avatar, AvatarFallback } from '../ui/Avatar'
 import { Badge } from '../ui/Badge'
 import { useAuth } from '../../context/AuthContext'
 
-export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite }) {
+export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite, disabled }) {
   const { user } = useAuth()
 
   const otherUsers = onlineUsers.filter((u) => u.id !== user?.id)
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={`hover:shadow-md transition-shadow ${disabled ? 'opacity-60' : ''}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite
                     size="sm"
                     variant={wasDeclined ? 'destructive' : 'outline'}
                     onClick={() => onInvite(onlineUser)}
-                    disabled={isInviting && !wasDeclined}
+                    disabled={disabled || (isInviting && !wasDeclined)}
                     className="h-8"
                   >
                     {isInviting && !wasDeclined ? (

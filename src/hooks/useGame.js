@@ -296,14 +296,29 @@ export function useGame(gameId) {
     }
   }, [game, updateStats])
 
-  // Forfeit the game (current user loses)
+  // Forfeit the game (current user loses) or cancel if waiting
   const forfeit = useCallback(async () => {
     if (!game || !user) return { error: 'No game or user' }
     if (game.status !== 'in_progress' && game.status !== 'waiting') {
       return { error: 'Game is not active' }
     }
 
-    // Determine the winner (opponent)
+    // If game is waiting (no opponent yet), just delete it
+    if (game.status === 'waiting') {
+      const { error: deleteError } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', game.id)
+
+      if (deleteError) {
+        return { error: deleteError.message }
+      }
+
+      setGame(null)
+      return { data: null, cancelled: true }
+    }
+
+    // Game is in progress - determine the winner (opponent)
     let winner
     if (game.is_ai_game) {
       winner = 'ai'
@@ -326,10 +341,8 @@ export function useGame(gameId) {
       return { error: updateError.message }
     }
 
-    // Update stats (only if it was in progress, not waiting)
-    if (game.status === 'in_progress' && winner) {
-      await updateStats(winner)
-    }
+    // Update stats - forfeiter loses, opponent wins
+    await updateStats(winner)
 
     setGame(data)
     return { data }
@@ -363,10 +376,65 @@ export function useGame(gameId) {
   }
 }
 
+// Hook to get user's active game (waiting or in_progress)
+export function useActiveGame() {
+  const { user } = useAuth()
+  const [activeGame, setActiveGame] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchActiveGame = useCallback(async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
+        .in('status', ['waiting', 'in_progress'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, which is fine
+        console.error('Error fetching active game:', error)
+      }
+
+      setActiveGame(data || null)
+    } catch (err) {
+      console.error('Error fetching active game:', err)
+      setActiveGame(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    fetchActiveGame()
+  }, [fetchActiveGame])
+
+  return { activeGame, loading, refetch: fetchActiveGame }
+}
+
 // Hook to create a new game
 export function useCreateGame() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
+
+  const checkForActiveGame = async () => {
+    const { data } = await supabase
+      .from('games')
+      .select('id')
+      .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
+      .in('status', ['waiting', 'in_progress'])
+      .limit(1)
+      .single()
+
+    return data
+  }
 
   const createGame = async (isAI = false, aiDifficulty = 'hard') => {
     if (!user) return { error: 'Not authenticated' }
@@ -374,6 +442,12 @@ export function useCreateGame() {
     setLoading(true)
 
     try {
+      // Check if user already has an active game
+      const existingGame = await checkForActiveGame()
+      if (existingGame) {
+        return { error: 'You already have an active game', existingGameId: existingGame.id }
+      }
+
       const { data, error } = await supabase
         .from('games')
         .insert({

@@ -127,7 +127,7 @@ export default function Game() {
   }
 
   const handleForfeit = async () => {
-    const { error } = await forfeit()
+    const { error, cancelled } = await forfeit()
     if (error) {
       toast({
         title: 'Error',
@@ -135,17 +135,23 @@ export default function Game() {
         variant: 'destructive',
       })
     } else {
-      toast({
-        title: 'Game forfeited',
-        description: 'You have forfeited the game.',
-        variant: 'destructive',
-      })
-      setShowForfeitModal(false)
-      // Navigate if there was a pending navigation
-      if (pendingNavigationRef.current) {
-        navigate(pendingNavigationRef.current)
-        pendingNavigationRef.current = null
+      if (cancelled) {
+        toast({
+          title: 'Game cancelled',
+          description: 'The game has been cancelled.',
+        })
+      } else {
+        toast({
+          title: 'Game forfeited',
+          description: 'You have forfeited the game.',
+          variant: 'destructive',
+        })
       }
+      setShowForfeitModal(false)
+      // Navigate to dashboard or pending location
+      const destination = pendingNavigationRef.current || '/'
+      pendingNavigationRef.current = null
+      navigate(destination)
     }
   }
 
@@ -252,12 +258,14 @@ export default function Game() {
         onPlayAgain={handlePlayAgain}
       />
 
-      {/* Forfeit confirmation modal */}
+      {/* Forfeit/Cancel confirmation modal */}
       {showForfeitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-rose-600 dark:text-rose-400">Forfeit Game?</h2>
+              <h2 className="text-xl font-bold text-rose-600 dark:text-rose-400">
+                {game?.status === 'waiting' ? 'Cancel Game?' : 'Forfeit Game?'}
+              </h2>
               <button
                 onClick={handleCancelForfeit}
                 className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
@@ -276,7 +284,7 @@ export default function Game() {
                 className="flex-1"
                 onClick={handleCancelForfeit}
               >
-                Keep Playing
+                {game?.status === 'waiting' ? 'Keep Waiting' : 'Keep Playing'}
               </Button>
               <Button
                 variant="destructive"
@@ -284,7 +292,7 @@ export default function Game() {
                 onClick={handleForfeit}
               >
                 <Flag className="h-4 w-4 mr-2" />
-                Forfeit
+                {game?.status === 'waiting' ? 'Cancel Game' : 'Forfeit'}
               </Button>
             </div>
           </div>
