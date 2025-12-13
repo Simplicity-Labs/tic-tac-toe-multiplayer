@@ -516,6 +516,25 @@ export function useLeaderboard(limit = 50) {
 
   useEffect(() => {
     fetchLeaderboard()
+
+    const channel = supabase
+      .channel('leaderboard')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+        },
+        () => {
+          fetchLeaderboard()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [fetchLeaderboard])
 
   return { players, loading, refetch: fetchLeaderboard }
