@@ -34,3 +34,5 @@ Thumbs.db
 
 # Local
 *.local
+.claude/settings.local.json
+supabase/.temp/
