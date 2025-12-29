@@ -1,8 +1,7 @@
-import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, User, Grid3X3 } from 'lucide-react'
+import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, Grid3X3 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGameHistory } from '../hooks/useGame'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
-import { Avatar, AvatarFallback } from '../components/ui/Avatar'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../lib/utils'
 import { getBoardSize, BOARD_SIZES } from '../lib/gameLogic'
@@ -97,17 +96,15 @@ export default function History() {
                       {/* Opponent */}
                       <div className="flex items-center gap-2">
                         <span className="text-slate-400">vs</span>
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            {opponent.isAI ? (
-                              <Bot className="h-4 w-4" />
-                            ) : opponent.username ? (
-                              opponent.username.charAt(0).toUpperCase()
-                            ) : (
-                              <User className="h-4 w-4" />
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
+                        {opponent.isAI ? (
+                          <div className="h-8 w-8 flex items-center justify-center">
+                            <Bot className="h-5 w-5" />
+                          </div>
+                        ) : (
+                          <div className="h-8 w-8 flex items-center justify-center text-xl">
+                            {opponent.avatar || '😀'}
+                          </div>
+                        )}
                         <span className="font-medium">{opponent.username}</span>
                       </div>
                     </div>

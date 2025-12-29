@@ -1,7 +1,6 @@
 import { Users, UserPlus, Loader2, Gamepad2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { Button } from '../ui/Button'
-import { Avatar, AvatarFallback } from '../ui/Avatar'
 import { Badge } from '../ui/Badge'
 import { useAuth } from '../../context/AuthContext'
 
@@ -57,11 +56,9 @@ export function OnlineUsersCard({ onlineUsers, isConnected, onInvite, sentInvite
                   className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50"
                 >
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={`text-xs ${isInGame ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'}`}>
-                        {onlineUser.username?.slice(0, 2).toUpperCase() || '??'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="h-8 w-8 flex items-center justify-center text-xl">
+                      {onlineUser.avatar || '😀'}
+                    </div>
                     <div>
                       <p className="text-sm font-medium">{onlineUser.username}</p>
                       {isInGame ? (

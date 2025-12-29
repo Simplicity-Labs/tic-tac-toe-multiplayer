@@ -1,7 +1,6 @@
-import { User, Clock, Grid3X3 } from 'lucide-react'
+import { Clock, Grid3X3 } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
-import { Avatar, AvatarFallback } from '../ui/Avatar'
 import { Badge } from '../ui/Badge'
 import { getBoardSize, BOARD_SIZES } from '../../lib/gameLogic'
 
@@ -25,11 +24,9 @@ export function GameCard({ game, onJoin, loading }) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
-                {creator?.username ? creator.username.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-              </AvatarFallback>
-            </Avatar>
+            <div className="h-10 w-10 flex items-center justify-center text-2xl">
+              {creator?.avatar || '😀'}
+            </div>
             <div>
               <p className="font-semibold">{creator?.username || 'Unknown'}</p>
               <div className="flex items-center gap-2 text-xs text-slate-500">

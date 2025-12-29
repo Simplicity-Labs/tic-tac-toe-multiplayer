@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { User, Eye } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { Card, CardContent } from '../ui/Card'
 import { Button } from '../ui/Button'
-import { Avatar, AvatarFallback } from '../ui/Avatar'
 import { Badge } from '../ui/Badge'
 
 export function LiveGameCard({ game }) {
@@ -21,11 +20,9 @@ export function LiveGameCard({ game }) {
           <div className="flex items-center gap-3">
             {/* Player X */}
             <div className="flex items-center gap-2">
-              <Avatar className={isXTurn ? 'ring-2 ring-primary-500' : ''}>
-                <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
-                  {playerX?.username ? playerX.username.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
+              <div className={`h-10 w-10 flex items-center justify-center text-2xl ${isXTurn ? 'ring-2 ring-primary-500 rounded-full' : ''}`}>
+                {playerX?.avatar || '😀'}
+              </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-medium">{playerX?.username || 'Player X'}</p>
                 <p className="text-xs text-primary-500">X</p>
@@ -36,11 +33,9 @@ export function LiveGameCard({ game }) {
 
             {/* Player O */}
             <div className="flex items-center gap-2">
-              <Avatar className={!isXTurn ? 'ring-2 ring-rose-500' : ''}>
-                <AvatarFallback className="bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300">
-                  {playerO?.username ? playerO.username.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
+              <div className={`h-10 w-10 flex items-center justify-center text-2xl ${!isXTurn ? 'ring-2 ring-rose-500 rounded-full' : ''}`}>
+                {playerO?.avatar || '😀'}
+              </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-medium">{playerO?.username || 'Player O'}</p>
                 <p className="text-xs text-rose-500">O</p>

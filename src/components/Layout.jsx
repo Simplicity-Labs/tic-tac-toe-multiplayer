@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X, Settings, Shield } from 'lucide-react'
+import { Grid3X3, Home, History, Trophy, LogOut, UserPlus, Mail, Lock, X, Settings, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useInvitations } from '../context/InvitationsContext'
 import { useSettings } from '../context/SettingsContext'
@@ -8,7 +8,6 @@ import { useToast } from './ui/Toast'
 import { ThemeToggle } from './ThemeToggle'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
-import { Avatar, AvatarFallback } from './ui/Avatar'
 import { InviteNotification } from './InviteNotification'
 import { HolidayDecorations, HolidayHeaderBar } from './HolidayDecorations'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -182,18 +181,9 @@ export default function Layout() {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <Button variant="ghost" className={cn("gap-2 pl-2", isAdmin && "pr-1")}>
-                    <Avatar className={cn("h-8 w-8", isAdmin && "ring-2 ring-amber-500")}>
-                      <AvatarFallback className={cn(
-                        "text-sm",
-                        isAdmin
-                          ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
-                          : "bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300"
-                      )}>
-                        {profile?.username?.charAt(0).toUpperCase() || (
-                          <User className="h-4 w-4" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className={cn("h-8 w-8 flex items-center justify-center text-xl", isAdmin && "ring-2 ring-amber-500 rounded-full")}>
+                      {profile?.avatar || '😀'}
+                    </div>
                     <span className="hidden sm:inline font-medium">
                       {profile?.username || 'User'}
                     </span>

@@ -1,6 +1,5 @@
-import { X, Circle, Bot, User } from 'lucide-react'
+import { X, Circle, Bot } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { Avatar, AvatarFallback } from '../ui/Avatar'
 import { Timer } from '../ui/Timer'
 
 export function GameStatus({
@@ -84,21 +83,15 @@ function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDiff
       )}
     >
       <div className="relative">
-        <Avatar className="h-12 w-12">
-          <AvatarFallback className={cn(
-            symbol === 'X'
-              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300'
-              : 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300'
-          )}>
-            {isAI ? (
-              <Bot className="h-6 w-6" />
-            ) : player?.username ? (
-              player.username.charAt(0).toUpperCase()
-            ) : (
-              <User className="h-6 w-6" />
-            )}
-          </AvatarFallback>
-        </Avatar>
+        {isAI ? (
+          <div className="h-12 w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full">
+            <Bot className="h-6 w-6" />
+          </div>
+        ) : (
+          <div className="h-12 w-12 flex items-center justify-center text-3xl">
+            {player?.avatar || '😀'}
+          </div>
+        )}
         <div className={cn(
           'absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center',
           symbol === 'X'

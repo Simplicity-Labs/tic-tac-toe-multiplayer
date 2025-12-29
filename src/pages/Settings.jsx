@@ -1,15 +1,26 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield, Eye, EyeOff } from 'lucide-react'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield, Eye, EyeOff, User } from 'lucide-react'
 import { useSettings, getAvailableThemes } from '../context/SettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
+import { useToast } from '../components/ui/Toast'
+import { AvatarPicker } from '../components/AvatarPicker'
 import { cn } from '../lib/utils'
 
 export default function Settings() {
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { profile, updateProfile, isAdmin } = useAuth()
+  const { toast } = useToast()
   const [previewAsUser, setPreviewAsUser] = useState(false)
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState({
+    username: profile?.username || '',
+    avatar: profile?.avatar || '😀',
+  })
+  const [profileLoading, setProfileLoading] = useState(false)
   const {
     symbolTheme,
     setSymbolTheme,
@@ -30,6 +41,40 @@ export default function Settings() {
 
   // When previewing as user, show themes as regular users would see them
   const themesToDisplay = previewAsUser ? getAvailableThemes(false) : availableThemes
+
+  const handleProfileUpdate = async () => {
+    setProfileLoading(true)
+    try {
+      const { error } = await updateProfile({
+        username: profileForm.username.trim(),
+        avatar: profileForm.avatar,
+      })
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'Profile updated!',
+          description: 'Your profile has been updated successfully.',
+          variant: 'success',
+        })
+        setIsEditingProfile(false)
+      }
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setProfileForm({
+      username: profile?.username || '',
+      avatar: profile?.avatar || '😀',
+    })
+    setIsEditingProfile(false)
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -80,6 +125,81 @@ export default function Settings() {
           )}
         </div>
       </div>
+
+      {/* Profile Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Profile
+              </h2>
+              <p className="text-sm text-slate-500">Update your username and avatar</p>
+            </div>
+            {!isEditingProfile && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingProfile(true)}
+              >
+                Edit
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isEditingProfile ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="username">
+                  Username
+                </label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={profileForm.username}
+                  onChange={(e) =>
+                    setProfileForm({ ...profileForm, username: e.target.value })
+                  }
+                  required
+                  minLength={3}
+                  maxLength={20}
+                />
+              </div>
+              <AvatarPicker
+                value={profileForm.avatar}
+                onChange={(avatar) => setProfileForm({ ...profileForm, avatar })}
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleProfileUpdate}
+                  disabled={profileLoading || !profileForm.username.trim()}
+                  className="flex-1"
+                >
+                  {profileLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  disabled={profileLoading}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="text-5xl">{profile?.avatar}</div>
+              <div>
+                <p className="font-medium text-lg">{profile?.username}</p>
+                <p className="text-sm text-slate-500">Your current profile</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Auto-enable Holiday Theme Toggle */}
       <Card>

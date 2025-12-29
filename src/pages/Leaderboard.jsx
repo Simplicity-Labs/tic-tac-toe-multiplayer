@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Trophy, Medal, Award, RefreshCw, User, X, Users, Sparkles, Zap, Brain, Calendar, Clock } from 'lucide-react'
+import { Trophy, Medal, Award, RefreshCw, X, Users, Sparkles, Zap, Brain, Calendar, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useLeaderboard } from '../hooks/useGame'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
-import { Avatar, AvatarFallback } from '../components/ui/Avatar'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../lib/utils'
@@ -158,22 +157,9 @@ export default function Leaderboard() {
                     {getRankIcon(rank)}
                   </div>
                   <div className="col-span-4 sm:col-span-5 flex items-center gap-2 sm:gap-3 min-w-0">
-                    <Avatar className="h-8 w-8 shrink-0">
-                      <AvatarFallback
-                        className={cn(
-                          'text-sm',
-                          rank === 1 && 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-                          rank === 2 && 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
-                          rank === 3 && 'bg-amber-100/70 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                        )}
-                      >
-                        {player.username ? (
-                          player.username.charAt(0).toUpperCase()
-                        ) : (
-                          <User className="h-4 w-4" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="h-8 w-8 flex items-center justify-center text-xl shrink-0">
+                      {player.avatar || '😀'}
+                    </div>
                     <span className={cn('font-medium truncate', isCurrentUser && 'text-primary-600 dark:text-primary-400')}>
                       {player.username || 'Unknown'}
                       {isCurrentUser && <span className="ml-2 text-xs">(You)</span>}
@@ -212,11 +198,9 @@ export default function Leaderboard() {
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300 text-lg">
-                    {selectedPlayer.username?.charAt(0).toUpperCase() || '?'}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="h-12 w-12 flex items-center justify-center text-3xl">
+                  {selectedPlayer.avatar || '😀'}
+                </div>
                 <div>
                   <h2 className="text-xl font-bold">{selectedPlayer.username}</h2>
                   <p className="text-sm text-slate-500">

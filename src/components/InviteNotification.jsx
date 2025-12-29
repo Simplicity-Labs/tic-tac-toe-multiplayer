@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, Gamepad2, Check, Loader2, Grid3X3 } from 'lucide-react'
 import { Button } from './ui/Button'
-import { Avatar, AvatarFallback } from './ui/Avatar'
 import { Badge } from './ui/Badge'
 import { BOARD_SIZES } from '../lib/gameLogic'
 
@@ -68,11 +67,9 @@ export function InviteNotification({ invite, onAccept, onDecline }) {
 
         {/* Invite content */}
         <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50">
-          <Avatar className="h-12 w-12">
-            <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300 text-lg">
-              {invite.from.username?.slice(0, 2).toUpperCase() || '??'}
-            </AvatarFallback>
-          </Avatar>
+          <div className="h-12 w-12 flex items-center justify-center text-3xl">
+            {invite.from.avatar || '😀'}
+          </div>
           <div>
             <p className="font-semibold">{invite.from.username}</p>
             <p className="text-sm text-slate-500">wants to play Tic Tac Toe!</p>

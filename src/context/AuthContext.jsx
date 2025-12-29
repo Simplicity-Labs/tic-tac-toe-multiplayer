@@ -266,12 +266,13 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
-  async function createProfile(username) {
+  async function createProfile(username, avatar = '😀') {
     if (!user) return { error: { message: 'Not authenticated' } }
 
     const { data, error } = await supabase.from('profiles').insert({
       id: user.id,
       username,
+      avatar,
     }).select().single()
 
     if (!error && data) {

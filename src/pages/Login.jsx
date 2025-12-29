@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { useToast } from '../components/ui/Toast'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { HolidayDecorations } from '../components/HolidayDecorations'
+import { AvatarPicker, AVATARS } from '../components/AvatarPicker'
 import { cn } from '../lib/utils'
 
 // Holiday-specific configurations with punny names
@@ -54,6 +55,7 @@ export default function Login() {
     email: '',
     password: '',
     username: '',
+    avatar: AVATARS[0], // Default to first avatar
   })
 
   const isHolidayTheme = currentTheme.seasonal
@@ -66,14 +68,18 @@ export default function Login() {
   const expiredCache = showUsernameForm ? getExpiredCachedProfile() : null
   const isReturningUser = showUsernameForm && isAnonymous && expiredCache !== null
 
-  // Pre-fill username from cached profile for returning users
+  // Pre-fill username and avatar from cached profile for returning users
   const hasPrefilledUsername = useRef(false)
   useEffect(() => {
     if (isReturningUser && expiredCache?.username && !hasPrefilledUsername.current) {
       hasPrefilledUsername.current = true
-      setFormData(prev => ({ ...prev, username: expiredCache.username }))
+      setFormData(prev => ({
+        ...prev,
+        username: expiredCache.username,
+        avatar: expiredCache.avatar || AVATARS[0],
+      }))
     }
-  }, [isReturningUser, expiredCache?.username])
+  }, [isReturningUser, expiredCache?.username, expiredCache?.avatar])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -81,7 +87,7 @@ export default function Login() {
 
     try {
       if (showUsernameForm) {
-        const { error } = await createProfile(formData.username.trim())
+        const { error } = await createProfile(formData.username.trim(), formData.avatar)
         if (error) {
           toast({
             title: 'Error',
@@ -229,27 +235,33 @@ export default function Login() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {showUsernameForm ? (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium" htmlFor="username">
-                      Username
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="username"
-                        type="text"
-                        placeholder="Enter your username"
-                        className="pl-10"
-                        value={formData.username}
-                        onChange={(e) =>
-                          setFormData({ ...formData, username: e.target.value })
-                        }
-                        required
-                        minLength={3}
-                        maxLength={20}
-                      />
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" htmlFor="username">
+                        Username
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                          id="username"
+                          type="text"
+                          placeholder="Enter your username"
+                          className="pl-10"
+                          value={formData.username}
+                          onChange={(e) =>
+                            setFormData({ ...formData, username: e.target.value })
+                          }
+                          required
+                          minLength={3}
+                          maxLength={20}
+                        />
+                      </div>
                     </div>
-                  </div>
+                    <AvatarPicker
+                      value={formData.avatar}
+                      onChange={(avatar) => setFormData({ ...formData, avatar })}
+                    />
+                  </>
                 ) : (
                   <>
                     <div className="space-y-2">
