@@ -509,6 +509,7 @@ export function useActiveGame() {
   const { user } = useAuth()
   const [activeGame, setActiveGame] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [forfeitLoading, setForfeitLoading] = useState(false)
 
   const fetchActiveGame = useCallback(async () => {
     if (!user) {
@@ -539,11 +540,102 @@ export function useActiveGame() {
     }
   }, [user])
 
+  // Forfeit or cancel the active game from dashboard
+  const forfeitGame = useCallback(async () => {
+    if (!activeGame || !user) return { error: 'No active game' }
+
+    setForfeitLoading(true)
+
+    try {
+      // If game is waiting (no opponent yet), just delete it
+      if (activeGame.status === 'waiting') {
+        const { error: deleteError } = await supabase
+          .from('games')
+          .delete()
+          .eq('id', activeGame.id)
+
+        if (deleteError) {
+          return { error: deleteError.message }
+        }
+
+        setActiveGame(null)
+        return { data: null, cancelled: true }
+      }
+
+      // Game is in progress - determine the winner (opponent)
+      const forfeiterId = user.id
+      let winner
+      if (activeGame.is_ai_game) {
+        winner = 'ai'
+      } else {
+        winner = activeGame.player_x === user.id ? activeGame.player_o : activeGame.player_x
+      }
+
+      const { error: updateError } = await supabase
+        .from('games')
+        .update({
+          status: 'completed',
+          winner: winner,
+          forfeit_by: forfeiterId,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', activeGame.id)
+
+      if (updateError) {
+        return { error: updateError.message }
+      }
+
+      // Update stats for forfeiter
+      const { data: playerProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (playerProfile) {
+        const isAI = activeGame.is_ai_game
+        const statCols = isAI
+          ? { losses: `ai_${activeGame.ai_difficulty || 'hard'}_losses` }
+          : { losses: 'pvp_losses' }
+
+        const updates = {
+          [statCols.losses]: (playerProfile[statCols.losses] || 0) + 1,
+          losses: (playerProfile.losses || 0) + 1,
+          forfeits: (playerProfile.forfeits || 0) + 1,
+        }
+
+        await supabase.from('profiles').update(updates).eq('id', user.id)
+      }
+
+      // For PvP games, also update opponent's wins
+      if (!activeGame.is_ai_game && winner) {
+        const { data: opponentProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', winner)
+          .single()
+
+        if (opponentProfile) {
+          const updates = {
+            pvp_wins: (opponentProfile.pvp_wins || 0) + 1,
+            wins: (opponentProfile.wins || 0) + 1,
+          }
+          await supabase.from('profiles').update(updates).eq('id', winner)
+        }
+      }
+
+      setActiveGame(null)
+      return { data: null }
+    } finally {
+      setForfeitLoading(false)
+    }
+  }, [activeGame, user])
+
   useEffect(() => {
     fetchActiveGame()
   }, [fetchActiveGame])
 
-  return { activeGame, loading, refetch: fetchActiveGame }
+  return { activeGame, loading, refetch: fetchActiveGame, forfeitGame, forfeitLoading }
 }
 
 // Hook to create a new game

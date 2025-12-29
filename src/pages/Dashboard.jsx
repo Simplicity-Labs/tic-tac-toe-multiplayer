@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock, Grid3X3 } from 'lucide-react'
+import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock, Grid3X3, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useAvailableGames, useLiveGames, useCreateGame, useJoinGame, useActiveGame } from '../hooks/useGame'
 import { usePresence } from '../hooks/usePresence'
@@ -54,7 +54,7 @@ export default function Dashboard() {
   const { games: liveGames, loading: liveGamesLoading, refetch: refetchLiveGames } = useLiveGames()
   const { createGame, loading: createLoading } = useCreateGame()
   const { joinGame, loading: joinLoading } = useJoinGame()
-  const { activeGame, refetch: refetchActiveGame } = useActiveGame()
+  const { activeGame, refetch: refetchActiveGame, forfeitGame, forfeitLoading } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
   const { boardSize: defaultBoardSize } = useSettings()
@@ -142,6 +142,24 @@ export default function Dashboard() {
     }
   }
 
+  const handleForfeit = async (e) => {
+    e.stopPropagation() // Prevent card click navigation
+    const { error, cancelled } = await forfeitGame()
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: cancelled ? 'Game cancelled' : 'Game forfeited',
+        description: cancelled ? 'Your game has been cancelled.' : 'You have forfeited the game.',
+        variant: 'default',
+      })
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Welcome header */}
@@ -187,10 +205,23 @@ export default function Dashboard() {
                     ? `Playing against AI (${activeGame.ai_difficulty})`
                     : 'Game in progress with another player'}
               </p>
-              <Button className="w-full">
-                <Play className="h-4 w-4 mr-2" />
-                Continue Game
-              </Button>
+              <div className="flex gap-2">
+                <Button className="flex-1">
+                  <Play className="h-4 w-4 mr-2" />
+                  Continue
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleForfeit}
+                  disabled={forfeitLoading}
+                  className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="ml-1 hidden sm:inline">
+                    {activeGame.status === 'waiting' ? 'Cancel' : 'Forfeit'}
+                  </span>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X, Settings } from 'lucide-react'
+import { Grid3X3, Home, History, Trophy, LogOut, User, UserPlus, Mail, Lock, X, Settings, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useInvitations } from '../context/InvitationsContext'
 import { useSettings } from '../context/SettingsContext'
@@ -15,7 +15,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { cn } from '../lib/utils'
 
 export default function Layout() {
-  const { user, profile, signOut, isAnonymous, linkEmailToAnonymous } = useAuth()
+  const { user, profile, signOut, isAnonymous, isAdmin, linkEmailToAnonymous } = useAuth()
   const { pendingInvite, sentInvite, acceptInvite, declineInvite } = useInvitations()
   const { currentTheme } = useSettings()
   const { toast } = useToast()
@@ -181,9 +181,14 @@ export default function Layout() {
               {/* User menu */}
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
-                  <Button variant="ghost" className="gap-2 pl-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300 text-sm">
+                  <Button variant="ghost" className={cn("gap-2 pl-2", isAdmin && "pr-1")}>
+                    <Avatar className={cn("h-8 w-8", isAdmin && "ring-2 ring-amber-500")}>
+                      <AvatarFallback className={cn(
+                        "text-sm",
+                        isAdmin
+                          ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                          : "bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300"
+                      )}>
                         {profile?.username?.charAt(0).toUpperCase() || (
                           <User className="h-4 w-4" />
                         )}
@@ -192,6 +197,12 @@ export default function Layout() {
                     <span className="hidden sm:inline font-medium">
                       {profile?.username || 'User'}
                     </span>
+                    {isAdmin && (
+                      <span className="hidden sm:flex items-center gap-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                        <Shield className="h-3 w-3" />
+                        Admin
+                      </span>
+                    )}
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Portal>
@@ -200,10 +211,16 @@ export default function Layout() {
                     align="end"
                   >
                     <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-700">
-                      <p className="font-medium">
+                      <p className="font-medium flex items-center gap-2">
                         {profile?.username}
-                        {isAnonymous && (
-                          <span className="ml-2 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                        {isAdmin && (
+                          <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                            <Shield className="h-3 w-3" />
+                            Admin
+                          </span>
+                        )}
+                        {isAnonymous && !isAdmin && (
+                          <span className="text-xs bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded">
                             Guest
                           </span>
                         )}

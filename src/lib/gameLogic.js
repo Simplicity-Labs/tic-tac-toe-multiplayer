@@ -124,16 +124,54 @@ export function getAvailableMoves(board) {
     .filter((index) => index !== null)
 }
 
-// Minimax algorithm for AI
-function minimax(board, depth, isMaximizing, alpha, beta) {
+// Get max search depth based on board size
+function getMaxDepth(boardSize) {
+  switch (boardSize) {
+    case 3: return 9  // Full search for 3x3
+    case 4: return 6  // Limited for 4x4
+    case 5: return 4  // More limited for 5x5
+    default: return 4
+  }
+}
+
+// Heuristic evaluation for non-terminal positions
+function evaluatePosition(board, boardSize) {
+  const combinations = getWinningCombinations(boardSize)
+  let score = 0
+
+  for (const combo of combinations) {
+    const cells = combo.map(i => board[i])
+    const oCount = cells.filter(c => c === 'O').length
+    const xCount = cells.filter(c => c === 'X').length
+
+    // Only score lines that aren't blocked
+    if (oCount > 0 && xCount === 0) {
+      // AI has pieces, player doesn't - good for AI
+      score += Math.pow(10, oCount)
+    } else if (xCount > 0 && oCount === 0) {
+      // Player has pieces, AI doesn't - bad for AI
+      score -= Math.pow(10, xCount)
+    }
+  }
+
+  return score
+}
+
+// Minimax algorithm for AI with depth limiting
+function minimax(board, depth, isMaximizing, alpha, beta, maxDepth, boardSize) {
   const result = checkWinner(board)
 
   if (result) {
-    return result.winner === 'O' ? 10 - depth : depth - 10
+    return result.winner === 'O' ? 1000 - depth : depth - 1000
   }
 
   if (checkDraw(board)) {
     return 0
+  }
+
+  // Depth limit reached - use heuristic evaluation
+  if (depth >= maxDepth) {
+    return evaluatePosition(board, boardSize)
   }
 
   if (isMaximizing) {
@@ -141,7 +179,7 @@ function minimax(board, depth, isMaximizing, alpha, beta) {
     for (const move of getAvailableMoves(board)) {
       const newBoard = [...board]
       newBoard[move] = 'O'
-      const evalScore = minimax(newBoard, depth + 1, false, alpha, beta)
+      const evalScore = minimax(newBoard, depth + 1, false, alpha, beta, maxDepth, boardSize)
       maxEval = Math.max(maxEval, evalScore)
       alpha = Math.max(alpha, evalScore)
       if (beta <= alpha) break
@@ -152,7 +190,7 @@ function minimax(board, depth, isMaximizing, alpha, beta) {
     for (const move of getAvailableMoves(board)) {
       const newBoard = [...board]
       newBoard[move] = 'X'
-      const evalScore = minimax(newBoard, depth + 1, true, alpha, beta)
+      const evalScore = minimax(newBoard, depth + 1, true, alpha, beta, maxDepth, boardSize)
       minEval = Math.min(minEval, evalScore)
       beta = Math.min(beta, evalScore)
       if (beta <= alpha) break
@@ -163,13 +201,15 @@ function minimax(board, depth, isMaximizing, alpha, beta) {
 
 // Get the best move for AI (O player)
 export function getBestMove(board) {
+  const boardSize = getBoardSize(board)
+  const maxDepth = getMaxDepth(boardSize)
   let bestScore = -Infinity
   let bestMove = null
 
   for (const move of getAvailableMoves(board)) {
     const newBoard = [...board]
     newBoard[move] = 'O'
-    const score = minimax(newBoard, 0, false, -Infinity, Infinity)
+    const score = minimax(newBoard, 0, false, -Infinity, Infinity, maxDepth, boardSize)
     if (score > bestScore) {
       bestScore = score
       bestMove = move

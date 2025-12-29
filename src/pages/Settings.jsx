@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield } from 'lucide-react'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield, Eye, EyeOff } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
@@ -8,6 +9,7 @@ import { cn } from '../lib/utils'
 export default function Settings() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
+  const [previewAsUser, setPreviewAsUser] = useState(false)
   const {
     symbolTheme,
     setSymbolTheme,
@@ -23,8 +25,29 @@ export default function Settings() {
     boardSizeOptions,
   } = useSettings()
 
+  // When previewing as user, hide admin-only features
+  const showAdminFeatures = isAdmin && !previewAsUser
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Admin Preview Banner */}
+      {isAdmin && previewAsUser && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-blue-500" />
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              Previewing as regular user
+            </span>
+          </div>
+          <button
+            onClick={() => setPreviewAsUser(false)}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Exit preview
+          </button>
+        </div>
+      )}
+
       <div>
         <button
           onClick={() => navigate(-1)}
@@ -33,11 +56,30 @@ export default function Settings() {
           <ArrowLeft className="h-4 w-4" />
           <span className="text-sm">Back</span>
         </button>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <SettingsIcon className="h-6 w-6" />
-          Settings
-        </h1>
-        <p className="text-slate-500">Customize your game experience</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <SettingsIcon className="h-6 w-6" />
+              Settings
+              {isAdmin && (
+                <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded-full">
+                  <Shield className="h-3 w-3" />
+                  Admin
+                </span>
+              )}
+            </h1>
+            <p className="text-slate-500">Customize your game experience</p>
+          </div>
+          {isAdmin && !previewAsUser && (
+            <button
+              onClick={() => setPreviewAsUser(true)}
+              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              <EyeOff className="h-4 w-4" />
+              View as User
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Auto-enable Holiday Theme Toggle */}
@@ -196,28 +238,31 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Admin Mode Toggle - Only visible to admins */}
-      {isAdmin && (
+      {/* Admin Mode Toggle - Only visible to admins (hidden in preview mode) */}
+      {showAdminFeatures && (
         <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-900/10">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="font-medium flex items-center gap-2">
-                    Admin Mode
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
-                      Admin Only
-                    </span>
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {adminMode
-                      ? 'All holiday themes are visible'
-                      : 'Enable to see all holiday themes'}
-                  </p>
-                </div>
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-600" />
+              <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200">Admin Settings</h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
+                Admin Only
+              </span>
+            </div>
+            <p className="text-sm text-amber-700/70 dark:text-amber-300/70">
+              These options are only visible to administrators
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Admin Mode Toggle */}
+            <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+              <div>
+                <p className="font-medium">Show All Holiday Themes</p>
+                <p className="text-sm text-slate-500">
+                  {adminMode
+                    ? 'All holiday themes are visible regardless of date'
+                    : 'Only current season themes are shown'}
+                </p>
               </div>
               <button
                 onClick={() => setAdminMode(!adminMode)}
@@ -234,6 +279,11 @@ export default function Settings() {
                 />
               </button>
             </div>
+
+            {/* Preview hint */}
+            <p className="text-xs text-amber-600/70 dark:text-amber-400/70 text-center">
+              Use &quot;View as User&quot; button above to see what regular users see
+            </p>
           </CardContent>
         </Card>
       )}
