@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield, Eye, EyeOff } from 'lucide-react'
-import { useSettings } from '../context/SettingsContext'
+import { useSettings, getAvailableThemes } from '../context/SettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
 import { cn } from '../lib/utils'
@@ -28,26 +28,11 @@ export default function Settings() {
   // When previewing as user, hide admin-only features
   const showAdminFeatures = isAdmin && !previewAsUser
 
+  // When previewing as user, show themes as regular users would see them
+  const themesToDisplay = previewAsUser ? getAvailableThemes(false) : availableThemes
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Admin Preview Banner */}
-      {isAdmin && previewAsUser && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Eye className="h-5 w-5 text-blue-500" />
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              Previewing as regular user
-            </span>
-          </div>
-          <button
-            onClick={() => setPreviewAsUser(false)}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Exit preview
-          </button>
-        </div>
-      )}
-
       <div>
         <button
           onClick={() => navigate(-1)}
@@ -70,13 +55,27 @@ export default function Settings() {
             </h1>
             <p className="text-slate-500">Customize your game experience</p>
           </div>
-          {isAdmin && !previewAsUser && (
+          {isAdmin && (
             <button
-              onClick={() => setPreviewAsUser(true)}
-              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => setPreviewAsUser(!previewAsUser)}
+              className={cn(
+                "flex items-center gap-2 text-sm px-3 py-2 rounded-lg border transition-colors",
+                previewAsUser
+                  ? "bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400"
+                  : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+              )}
             >
-              <EyeOff className="h-4 w-4" />
-              View as User
+              {previewAsUser ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Viewing as User
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  View as User
+                </>
+              )}
             </button>
           )}
         </div>
@@ -124,7 +123,7 @@ export default function Settings() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {availableThemes.map((theme) => {
+            {themesToDisplay.map((theme) => {
               const isSelected = symbolTheme === theme.id
               const isHoliday = theme.seasonal
 
