@@ -252,6 +252,20 @@ export function AuthProvider({ children }) {
     return { error }
   }
 
+  async function resetPassword(email) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    return { data, error }
+  }
+
+  async function updatePassword(newPassword) {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    })
+    return { data, error }
+  }
+
   async function createProfile(username) {
     if (!user) return { error: { message: 'Not authenticated' } }
 
@@ -304,6 +318,8 @@ export function AuthProvider({ children }) {
     signInAnonymously,
     linkEmailToAnonymous,
     signOut,
+    resetPassword,
+    updatePassword,
     createProfile,
     updateProfile,
     refreshProfile,

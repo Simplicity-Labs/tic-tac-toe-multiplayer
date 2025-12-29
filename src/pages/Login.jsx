@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Grid3X3, Mail, Lock, User, ArrowRight, UserX } from 'lucide-react'
+import { Grid3X3, Mail, Lock, User, ArrowRight, UserX, ArrowLeft } from 'lucide-react'
 import { useAuth, getExpiredCachedProfile } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { Button } from '../components/ui/Button'
@@ -45,10 +45,10 @@ const HOLIDAY_LOGIN_CONFIG = {
 }
 
 export default function Login() {
-  const { signIn, signUp, signInAnonymously, createProfile, profile, user, profileLoading, isAnonymous } = useAuth()
+  const { signIn, signUp, signInAnonymously, createProfile, resetPassword, profile, user, profileLoading, isAnonymous } = useAuth()
   const { currentTheme } = useSettings()
   const { toast } = useToast()
-  const [mode, setMode] = useState('signin') // 'signin', 'signup', 'username'
+  const [mode, setMode] = useState('signin') // 'signin', 'signup', 'username', 'forgot'
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -88,6 +88,22 @@ export default function Login() {
             description: error.message,
             variant: 'destructive',
           })
+        }
+      } else if (mode === 'forgot') {
+        const { error } = await resetPassword(formData.email)
+        if (error) {
+          toast({
+            title: 'Error',
+            description: error.message,
+            variant: 'destructive',
+          })
+        } else {
+          toast({
+            title: 'Check your email',
+            description: 'We sent you a password reset link.',
+            variant: 'success',
+          })
+          setMode('signin')
         }
       } else if (mode === 'signin') {
         const { error } = await signIn(formData.email, formData.password)
@@ -192,6 +208,8 @@ export default function Login() {
                   ? isReturningUser
                     ? 'Welcome back!'
                     : 'Choose a username'
+                  : mode === 'forgot'
+                  ? 'Reset password'
                   : mode === 'signin'
                   ? 'Welcome back'
                   : 'Create an account'}
@@ -201,6 +219,8 @@ export default function Login() {
                   ? isReturningUser
                     ? 'Your session expired. Please choose a username to continue.'
                     : 'Pick a display name for your profile'
+                  : mode === 'forgot'
+                  ? 'Enter your email to receive a reset link'
                   : mode === 'signin'
                   ? 'Sign in to continue playing'
                   : 'Join the game and challenge others'}
@@ -252,26 +272,28 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="password">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                          id="password"
-                          type="password"
-                          placeholder="Enter your password"
-                          className="pl-10"
-                          value={formData.password}
-                          onChange={(e) =>
-                            setFormData({ ...formData, password: e.target.value })
-                          }
-                          required
-                          minLength={6}
-                        />
+                    {mode !== 'forgot' && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium" htmlFor="password">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            id="password"
+                            type="password"
+                            placeholder="Enter your password"
+                            className="pl-10"
+                            value={formData.password}
+                            onChange={(e) =>
+                              setFormData({ ...formData, password: e.target.value })
+                            }
+                            required
+                            minLength={6}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
 
@@ -290,6 +312,8 @@ export default function Login() {
                     <span className="flex items-center gap-2">
                       {showUsernameForm
                         ? 'Continue'
+                        : mode === 'forgot'
+                        ? 'Send Reset Link'
                         : mode === 'signin'
                         ? 'Sign In'
                         : 'Sign Up'}
@@ -301,38 +325,65 @@ export default function Login() {
 
               {!showUsernameForm && (
                 <>
-                  <div className="mt-6 text-center">
-                    <p className="text-sm text-slate-500">
-                      {mode === 'signin'
-                        ? "Don't have an account?"
-                        : 'Already have an account?'}
+                  {mode === 'forgot' ? (
+                    <div className="mt-6 text-center">
                       <button
                         type="button"
-                        className="ml-1 text-primary-500 hover:underline font-medium"
-                        onClick={() =>
-                          setMode(mode === 'signin' ? 'signup' : 'signin')
-                        }
+                        className="text-sm text-primary-500 hover:underline font-medium inline-flex items-center gap-1"
+                        onClick={() => setMode('signin')}
                       >
-                        {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                        <ArrowLeft className="h-3 w-3" />
+                        Back to sign in
                       </button>
-                    </p>
-                  </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-6 text-center">
+                        <p className="text-sm text-slate-500">
+                          {mode === 'signin'
+                            ? "Don't have an account?"
+                            : 'Already have an account?'}
+                          <button
+                            type="button"
+                            className="ml-1 text-primary-500 hover:underline font-medium"
+                            onClick={() =>
+                              setMode(mode === 'signin' ? 'signup' : 'signin')
+                            }
+                          >
+                            {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                          </button>
+                        </p>
+                      </div>
 
-                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      onClick={handleGuestLogin}
-                      disabled={loading}
-                    >
-                      <UserX className="h-4 w-4 mr-2" />
-                      Play as Guest
-                    </Button>
-                    <p className="text-xs text-slate-400 text-center mt-2">
-                      You can create an account later to save your progress
-                    </p>
-                  </div>
+                      {mode === 'signin' && (
+                        <div className="mt-2 text-center">
+                          <button
+                            type="button"
+                            className="text-sm text-slate-500 hover:text-primary-500 hover:underline"
+                            onClick={() => setMode('forgot')}
+                          >
+                            Forgot password?
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full"
+                          onClick={handleGuestLogin}
+                          disabled={loading}
+                        >
+                          <UserX className="h-4 w-4 mr-2" />
+                          Play as Guest
+                        </Button>
+                        <p className="text-xs text-slate-400 text-center mt-2">
+                          You can create an account later to save your progress
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </CardContent>

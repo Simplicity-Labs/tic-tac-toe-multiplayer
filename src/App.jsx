@@ -3,6 +3,7 @@ import { useAuth, getCachedProfile } from './context/AuthContext'
 import Layout from './components/Layout'
 import { DashboardSkeleton } from './components/DashboardSkeleton'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Game from './pages/Game'
 import History from './pages/History'
@@ -83,6 +84,7 @@ export default function App() {
           </PublicRoute>
         }
       />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/"
         element={
