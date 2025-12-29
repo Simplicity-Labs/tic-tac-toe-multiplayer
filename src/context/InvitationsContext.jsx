@@ -207,6 +207,7 @@ export function InvitationsProvider({ children }) {
           from: {
             id: user.id,
             username: profile.username,
+            avatar: profile.avatar,
           },
         })
       } catch (err) {

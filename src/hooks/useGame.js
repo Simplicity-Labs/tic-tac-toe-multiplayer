@@ -744,7 +744,7 @@ export function useAvailableGames() {
         .from('games')
         .select(`
           *,
-          creator:profiles!games_player_x_fkey(id, username)
+          creator:profiles!games_player_x_fkey(id, username, avatar)
         `)
         .eq('status', 'waiting')
         .neq('player_x', user.id)
@@ -841,8 +841,8 @@ export function useLiveGames() {
         .from('games')
         .select(`
           *,
-          player_x_profile:profiles!games_player_x_fkey(id, username),
-          player_o_profile:profiles!games_player_o_fkey(id, username)
+          player_x_profile:profiles!games_player_x_fkey(id, username, avatar),
+          player_o_profile:profiles!games_player_o_fkey(id, username, avatar)
         `)
         .eq('status', 'in_progress')
         .eq('is_ai_game', false)
@@ -942,8 +942,8 @@ export function useGameHistory() {
           .from('games')
           .select(`
             *,
-            player_x_profile:profiles!games_player_x_fkey(id, username),
-            player_o_profile:profiles!games_player_o_fkey(id, username)
+            player_x_profile:profiles!games_player_x_fkey(id, username, avatar),
+            player_o_profile:profiles!games_player_o_fkey(id, username, avatar)
           `)
           .eq('status', 'completed')
           .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
@@ -979,8 +979,8 @@ export function useLeaderboard(limit = 50, period = 'all-time') {
         .from('games')
         .select(`
           id, player_x, player_o, winner, is_ai_game,
-          player_x_profile:profiles!games_player_x_fkey(id, username),
-          player_o_profile:profiles!games_player_o_fkey(id, username)
+          player_x_profile:profiles!games_player_x_fkey(id, username, avatar),
+          player_o_profile:profiles!games_player_o_fkey(id, username, avatar)
         `)
         .eq('status', 'completed')
         .eq('is_ai_game', false)
@@ -1011,6 +1011,7 @@ export function useLeaderboard(limit = 50, period = 'all-time') {
             playerStats[player.id] = {
               id: player.id,
               username: player.profile.username,
+              avatar: player.profile.avatar,
               pvp_wins: 0,
               pvp_losses: 0,
               pvp_draws: 0,

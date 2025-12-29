@@ -13,15 +13,18 @@ export function PresenceProvider({ children }) {
   const channelRef = useRef(null)
   const currentGameIdRef = useRef(null)
   const usernameRef = useRef(null)
+  const avatarRef = useRef(null)
 
-  // Keep username ref updated
+  // Keep username and avatar refs updated
   useEffect(() => {
     usernameRef.current = profile?.username
-  }, [profile?.username])
+    avatarRef.current = profile?.avatar
+  }, [profile?.username, profile?.avatar])
 
   // Only depend on user.id, not the whole user/profile objects
   const userId = user?.id
   const username = profile?.username
+  const avatar = profile?.avatar
 
   useEffect(() => {
     if (!userId || !username) return
@@ -63,6 +66,7 @@ export function PresenceProvider({ children }) {
           await channel.track({
             user_id: userId,
             username: usernameRef.current,
+            avatar: avatarRef.current,
             online_at: new Date().toISOString(),
             current_game_id: currentGameIdRef.current,
           })
@@ -76,7 +80,7 @@ export function PresenceProvider({ children }) {
       channelRef.current = null
       setIsConnected(false)
     }
-  }, [userId, username])
+  }, [userId, username, avatar])
 
   // Update presence with current game status
   const setCurrentGame = useCallback(async (gameId) => {
