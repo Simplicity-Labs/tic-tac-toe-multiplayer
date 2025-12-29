@@ -8,6 +8,7 @@ export function useAuth() {
 }
 
 const PROFILE_CACHE_KEY = 'tic-tac-toe-profile-cache'
+const PROFILE_CACHE_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 // Export for use in routing
 export function getCachedProfile() {
@@ -15,10 +16,24 @@ export function getCachedProfile() {
     const cached = localStorage.getItem(PROFILE_CACHE_KEY)
     if (cached) {
       const { profile, timestamp } = JSON.parse(cached)
-      // Cache valid for 1 hour
-      if (Date.now() - timestamp < 3600000) {
+      // Cache valid for 30 days
+      if (Date.now() - timestamp < PROFILE_CACHE_DURATION) {
         return profile
       }
+    }
+  } catch (e) {
+    // Ignore cache errors
+  }
+  return null
+}
+
+// Get cached profile even if expired (for fallback)
+export function getExpiredCachedProfile() {
+  try {
+    const cached = localStorage.getItem(PROFILE_CACHE_KEY)
+    if (cached) {
+      const { profile } = JSON.parse(cached)
+      return profile
     }
   } catch (e) {
     // Ignore cache errors
@@ -158,15 +173,30 @@ export function AuthProvider({ children }) {
         setProfile(data)
         setCachedProfile(data)
       } else if (!isBackground) {
-        // Only clear profile if not a background refresh
-        setProfile(null)
-        setCachedProfile(null)
+        // Profile not found in DB - try expired cache as fallback for returning users
+        const expiredCache = getExpiredCachedProfile()
+        if (expiredCache && expiredCache.id === userId) {
+          console.log('Using expired cache as fallback for returning user')
+          setProfile(expiredCache)
+          // Refresh the cache timestamp since we're using it
+          setCachedProfile(expiredCache)
+        } else {
+          setProfile(null)
+          setCachedProfile(null)
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error.message)
-      // On background refresh, keep existing profile on error
+      // On error, try expired cache as fallback
       if (!isBackground) {
-        setProfile(null)
+        const expiredCache = getExpiredCachedProfile()
+        if (expiredCache && expiredCache.id === userId) {
+          console.log('Using expired cache as fallback after fetch error')
+          setProfile(expiredCache)
+          setCachedProfile(expiredCache)
+        } else {
+          setProfile(null)
+        }
       }
     } finally {
       if (!isBackground) {

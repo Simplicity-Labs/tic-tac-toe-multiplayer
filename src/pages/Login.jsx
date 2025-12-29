@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Grid3X3, Mail, Lock, User, ArrowRight, UserX } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth, getExpiredCachedProfile } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -45,7 +45,7 @@ const HOLIDAY_LOGIN_CONFIG = {
 }
 
 export default function Login() {
-  const { signIn, signUp, signInAnonymously, createProfile, profile, user, profileLoading } = useAuth()
+  const { signIn, signUp, signInAnonymously, createProfile, profile, user, profileLoading, isAnonymous } = useAuth()
   const { currentTheme } = useSettings()
   const { toast } = useToast()
   const [mode, setMode] = useState('signin') // 'signin', 'signup', 'username'
@@ -61,6 +61,19 @@ export default function Login() {
 
   // If user is logged in but no profile (and profile check is complete), show username form
   const showUsernameForm = user && !profile && !profileLoading
+
+  // Check if this might be a returning user (has expired cache data)
+  const expiredCache = showUsernameForm ? getExpiredCachedProfile() : null
+  const isReturningUser = showUsernameForm && isAnonymous && expiredCache !== null
+
+  // Pre-fill username from cached profile for returning users
+  const hasPrefilledUsername = useRef(false)
+  useEffect(() => {
+    if (isReturningUser && expiredCache?.username && !hasPrefilledUsername.current) {
+      hasPrefilledUsername.current = true
+      setFormData(prev => ({ ...prev, username: expiredCache.username }))
+    }
+  }, [isReturningUser, expiredCache?.username])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -176,14 +189,18 @@ export default function Login() {
             <CardHeader>
               <CardTitle>
                 {showUsernameForm
-                  ? 'Choose a username'
+                  ? isReturningUser
+                    ? 'Welcome back!'
+                    : 'Choose a username'
                   : mode === 'signin'
                   ? 'Welcome back'
                   : 'Create an account'}
               </CardTitle>
               <CardDescription>
                 {showUsernameForm
-                  ? 'Pick a display name for your profile'
+                  ? isReturningUser
+                    ? 'Your session expired. Please choose a username to continue.'
+                    : 'Pick a display name for your profile'
                   : mode === 'signin'
                   ? 'Sign in to continue playing'
                   : 'Join the game and challenge others'}
