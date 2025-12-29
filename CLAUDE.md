@@ -141,6 +141,8 @@ sendChannel.subscribe((status) => {
 - Delay channel removal after sending to ensure message propagates
 - Broadcasts are ephemeral - if recipient isn't subscribed, message is lost
 
+**If you keep hitting sync issues:** See [PartyKit Migration Guide](../docs/partykit-migration-guide.md) for when to consider switching from Supabase real-time to edge-based state management.
+
 ### Supabase Query Patterns
 
 - `.single()` - Throws error if 0 or >1 rows returned (PGRST116)

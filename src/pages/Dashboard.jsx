@@ -57,9 +57,8 @@ export default function Dashboard() {
   const { activeGame, refetch: refetchActiveGame, forfeitGame, forfeitLoading } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
-  const { boardSize: defaultBoardSize } = useSettings()
+  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize } = useSettings()
   const { toast } = useToast()
-  const [selectedBoardSize, setSelectedBoardSize] = useState(defaultBoardSize)
 
   const handleCreateGame = async () => {
     const { data, error, existingGameId } = await createGame(false, 'hard', selectedBoardSize)
