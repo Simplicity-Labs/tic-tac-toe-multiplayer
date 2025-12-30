@@ -301,12 +301,16 @@ export default function Dashboard() {
                           title={BOARD_SIZES[size].description}
                           className={cn(
                             'px-2 py-2 rounded-lg text-xs font-medium transition-all',
-                            selectedBoardSize === size
-                              ? 'bg-primary-500 text-white'
-                              : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            size === 7
+                              ? selectedBoardSize === 7
+                                ? 'bg-gradient-to-r from-red-500 to-yellow-500 text-white shadow-md'
+                                : 'bg-gradient-to-r from-red-100 to-yellow-100 dark:from-red-900/40 dark:to-yellow-900/40 text-red-700 dark:text-red-300 hover:from-red-200 hover:to-yellow-200 dark:hover:from-red-800/40 dark:hover:to-yellow-800/40'
+                              : selectedBoardSize === size
+                                ? 'bg-primary-500 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
                           )}
                         >
-                          {BOARD_SIZES[size].label}
+                          {size === 7 ? 'C4' : BOARD_SIZES[size].label}
                         </button>
                       ))}
                     </div>
