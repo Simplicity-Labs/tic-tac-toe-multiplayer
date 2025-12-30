@@ -72,21 +72,22 @@
   }
 }
 
-/* Gravity mode falling animation - visible drop from above */
+/* Gravity mode falling animation - falls from top of board */
 .cell-fall {
-  animation: cellFall 0.4s cubic-bezier(0.45, 0, 0.55, 1);
+  --fall-distance: -200px; /* fallback, overridden by inline style */
+  animation: cellFall 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 @keyframes cellFall {
   0% {
-    transform: translateY(-200px) scale(0.9);
-    opacity: 0.5;
+    transform: translateY(var(--fall-distance)) scale(0.95);
+    opacity: 0.7;
   }
-  20% {
+  15% {
     opacity: 1;
   }
   85% {
-    transform: translateY(8px) scale(1.02);
+    transform: translateY(6px) scale(1.02);
   }
   100% {
     transform: translateY(0) scale(1);

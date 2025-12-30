@@ -3,7 +3,7 @@ import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../context/SettingsContext'
 
-export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode }) {
+export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode, index = 0 }) {
   const { currentTheme } = useSettings()
   const isClassic = currentTheme.id === 'classic'
 
@@ -18,6 +18,10 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
     }
     prevValueRef.current = value
   }, [value])
+
+  // Calculate row for gravity animation (how far to fall from top)
+  const cols = boardSize === 7 ? 7 : boardSize
+  const row = Math.floor(index / cols)
 
   // Decay mode visual properties
   const hasDecay = decayStatus && decayStatus.turnsRemaining !== null
@@ -106,7 +110,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
         'aspect-square w-full flex items-center justify-center relative group',
         'bg-white dark:bg-slate-900 rounded-xl overflow-visible',
         'transition-all duration-200',
-        'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+        'focus:outline-none',
         // Normal hover for non-gravity mode
         !isGravityMode && !disabled && !value && 'hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer',
         // Gravity mode - all cells in column are clickable
@@ -121,7 +125,11 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
       {value && (
         <div
           key={`${value}-${animationKey}`}
-          style={{ opacity: decayOpacity }}
+          style={{
+            opacity: decayOpacity,
+            // For gravity mode, set CSS variable for dynamic fall distance from top
+            ...(isGravityMode && { '--fall-distance': `${(row + 1) * -70}px` })
+          }}
           className={cn(
             "transition-opacity duration-300",
             isGravityMode ? "cell-fall" : "cell-enter"

@@ -45,6 +45,7 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
         {board.map((cell, index) => (
           <Cell
             key={index}
+            index={index}
             value={cell}
             onClick={() => onCellClick(index)}
             onHover={() => handleCellHover(index)}
