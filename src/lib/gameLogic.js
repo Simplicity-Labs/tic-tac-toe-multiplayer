@@ -614,3 +614,130 @@ export function createRandomStartBoard(boardSize = 3) {
 
 // Get the Blitz timer duration
 export const BLITZ_TIMER_DURATION = 5
+
+// ============================================
+// BOMB MODE LOGIC
+// ============================================
+
+// Bomb a random empty cell (excludes bombed cells and player pieces)
+export function bombRandomCell(board, bombedCells = []) {
+  const available = board
+    .map((cell, i) => (isEmpty(cell) && !bombedCells.includes(i)) ? i : -1)
+    .filter(i => i !== -1)
+
+  if (available.length === 0) return null
+
+  const randomIndex = Math.floor(Math.random() * available.length)
+  return available[randomIndex]
+}
+
+// Check if a cell is bombed
+export function isBombed(index, bombedCells = []) {
+  return bombedCells.includes(index)
+}
+
+// Get available moves excluding bombed cells
+export function getAvailableMovesWithBombs(board, bombedCells = []) {
+  return board
+    .map((cell, index) => (isEmpty(cell) && !bombedCells.includes(index)) ? index : null)
+    .filter((index) => index !== null)
+}
+
+// Check draw accounting for bombed cells
+export function checkDrawWithBombs(board, bombedCells = []) {
+  const allFilled = board.every((cell, i) => cell === 'X' || cell === 'O' || bombedCells.includes(i))
+  return allFilled && !checkWinner(board)
+}
+
+// ============================================
+// BLOCKER MODE LOGIC
+// ============================================
+
+// Blocker marker in the board
+export const BLOCKER_MARKER = 'B'
+
+// Check if a cell has a blocker
+export function isBlocked(cell) {
+  return cell === BLOCKER_MARKER
+}
+
+// Check if cell is empty (excluding blockers)
+export function isEmptyOrBlocked(cell) {
+  return isEmpty(cell) || isBlocked(cell)
+}
+
+// Place a blocker on a random empty cell
+export function placeRandomBlocker(board) {
+  const available = board
+    .map((cell, i) => isEmpty(cell) ? i : -1)
+    .filter(i => i !== -1)
+
+  if (available.length === 0) return { board, blockerPosition: null }
+
+  const randomIndex = Math.floor(Math.random() * available.length)
+  const blockerPosition = available[randomIndex]
+
+  const newBoard = [...board]
+  newBoard[blockerPosition] = BLOCKER_MARKER
+
+  return { board: newBoard, blockerPosition }
+}
+
+// Get available moves excluding blockers
+export function getAvailableMovesWithBlockers(board) {
+  return board
+    .map((cell, index) => isEmpty(cell) ? index : null)
+    .filter((index) => index !== null)
+}
+
+// Check draw accounting for blockers
+export function checkDrawWithBlockers(board) {
+  const allFilled = board.every((cell) => cell === 'X' || cell === 'O' || cell === BLOCKER_MARKER)
+  return allFilled && !checkWinner(board)
+}
+
+// ============================================
+// FOG OF WAR MODE LOGIC
+// ============================================
+
+// Get cells adjacent to a position (including diagonals)
+export function getAdjacentCells(position, boardSize) {
+  const { cols, rows } = getBoardDimensions(boardSize)
+  const row = Math.floor(position / cols)
+  const col = position % cols
+
+  const adjacent = []
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue // Skip self
+      const newRow = row + dr
+      const newCol = col + dc
+      if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+        adjacent.push(newRow * cols + newCol)
+      }
+    }
+  }
+  return adjacent
+}
+
+// Get all cells visible to a player in fog of war mode
+export function getVisibleCells(board, playerSymbol, boardSize) {
+  const visible = new Set()
+
+  board.forEach((cell, index) => {
+    if (cell === playerSymbol) {
+      // Player's own piece is visible
+      visible.add(index)
+      // Adjacent cells are visible
+      getAdjacentCells(index, boardSize).forEach(adj => visible.add(adj))
+    }
+  })
+
+  return visible
+}
+
+// Check if a cell is visible to a player
+export function isCellVisible(index, board, playerSymbol, boardSize) {
+  const visible = getVisibleCells(board, playerSymbol, boardSize)
+  return visible.has(index)
+}

@@ -13,6 +13,14 @@ import {
   DEFAULT_DECAY_TURNS,
   getGravityDropPosition,
   getBoardSize,
+  // Bomb mode
+  bombRandomCell,
+  isBombed,
+  checkDrawWithBombs,
+  // Blocker mode
+  placeRandomBlocker,
+  BLOCKER_MARKER,
+  checkDrawWithBlockers,
 } from '../lib/gameLogic'
 
 const DEFAULT_TURN_DURATION = 30 // seconds
@@ -129,6 +137,8 @@ export function useGame(gameId) {
 
       // Handle gravity mode - find where piece actually lands
       const isGravityMode = game.game_mode === 'gravity'
+      const isBombMode = game.game_mode === 'bomb'
+      const isBlockerMode = game.game_mode === 'blocker'
       let actualPosition = position
 
       if (isGravityMode) {
@@ -141,6 +151,14 @@ export function useGame(gameId) {
         // Validate position is empty (non-gravity mode)
         if (!isEmpty(game.board[position])) {
           return { error: 'Position already taken' }
+        }
+        // Check if cell is bombed (bomb mode)
+        if (isBombMode && isBombed(position, game.bombed_cells || [])) {
+          return { error: 'This cell has been bombed!' }
+        }
+        // Check if cell has a blocker (blocker mode)
+        if (isBlockerMode && game.board[position] === BLOCKER_MARKER) {
+          return { error: 'This cell is blocked!' }
         }
       }
 
@@ -161,7 +179,17 @@ export function useGame(gameId) {
 
       // Check for winner BEFORE applying decay
       let winResult = checkWinner(newBoard)
-      const isDraw = !winResult && checkDraw(newBoard)
+      // Use appropriate draw check based on game mode
+      let isDraw = false
+      if (!winResult) {
+        if (isBombMode) {
+          isDraw = checkDrawWithBombs(newBoard, game.bombed_cells || [])
+        } else if (isBlockerMode) {
+          isDraw = checkDrawWithBlockers(newBoard)
+        } else {
+          isDraw = checkDraw(newBoard)
+        }
+      }
 
       // Apply decay AFTER checking for win (pieces decay after the move)
       if (isDecayMode && newPlacedAt && !winResult && !isDraw) {
@@ -182,6 +210,32 @@ export function useGame(gameId) {
       // Add decay mode fields
       if (isDecayMode) {
         updates.placed_at = newPlacedAt
+      }
+
+      // Handle bomb mode - bomb a random cell every 2 turns (starting from turn 2)
+      let newBombedCells = game.bombed_cells || []
+      if (isBombMode && !winResult && !isDraw && newTurnCount >= 2 && newTurnCount % 2 === 0) {
+        const bombedCell = bombRandomCell(newBoard, newBombedCells)
+        if (bombedCell !== null) {
+          newBombedCells = [...newBombedCells, bombedCell]
+          updates.bombed_cells = newBombedCells
+        }
+      }
+
+      // Handle blocker mode - place a random blocker after each move
+      if (isBlockerMode && !winResult && !isDraw) {
+        const blockerResult = placeRandomBlocker(newBoard)
+        if (blockerResult.blockerPosition !== null) {
+          newBoard = blockerResult.board
+          updates.board = newBoard
+          // Re-check for draw after placing blocker
+          isDraw = checkDrawWithBlockers(newBoard)
+          if (isDraw) {
+            updates.status = 'completed'
+            updates.winner = null
+            updates.completed_at = new Date().toISOString()
+          }
+        }
       }
 
       if (winResult) {
@@ -295,10 +349,23 @@ export function useGame(gameId) {
 
     const difficulty = game.ai_difficulty || 'hard'
     const isGravityMode = game.game_mode === 'gravity'
+    const isBombMode = game.game_mode === 'bomb'
+    const isBlockerMode = game.game_mode === 'blocker'
 
     // getAIMove now handles gravity mode internally and returns the correct position
+    // For bomb/blocker modes, AI uses standard move selection (blocked cells handled separately)
     const aiPosition = getAIMove(game.board, difficulty, isGravityMode)
     if (aiPosition === null) return
+
+    // For bomb mode, skip if bombed cell
+    if (isBombMode && isBombed(aiPosition, game.bombed_cells || [])) {
+      // Try to find another position (simple fallback)
+      const available = game.board
+        .map((cell, i) => (isEmpty(cell) && !isBombed(i, game.bombed_cells || [])) ? i : -1)
+        .filter(i => i !== -1)
+      if (available.length === 0) return
+      // Use first available for simplicity
+    }
 
     let newBoard = [...game.board]
     newBoard[aiPosition] = 'O'
@@ -315,7 +382,17 @@ export function useGame(gameId) {
 
     // Check for winner BEFORE applying decay
     let winResult = checkWinner(newBoard)
-    const isDraw = !winResult && checkDraw(newBoard)
+    // Use appropriate draw check based on game mode
+    let isDraw = false
+    if (!winResult) {
+      if (isBombMode) {
+        isDraw = checkDrawWithBombs(newBoard, game.bombed_cells || [])
+      } else if (isBlockerMode) {
+        isDraw = checkDrawWithBlockers(newBoard)
+      } else {
+        isDraw = checkDraw(newBoard)
+      }
+    }
 
     // Apply decay AFTER checking for win
     if (isDecayMode && newPlacedAt && !winResult && !isDraw) {
@@ -333,6 +410,32 @@ export function useGame(gameId) {
     // Add decay mode fields
     if (isDecayMode) {
       updates.placed_at = newPlacedAt
+    }
+
+    // Handle bomb mode - bomb a random cell every 2 turns
+    let newBombedCells = game.bombed_cells || []
+    if (isBombMode && !winResult && !isDraw && newTurnCount >= 2 && newTurnCount % 2 === 0) {
+      const bombedCell = bombRandomCell(newBoard, newBombedCells)
+      if (bombedCell !== null) {
+        newBombedCells = [...newBombedCells, bombedCell]
+        updates.bombed_cells = newBombedCells
+      }
+    }
+
+    // Handle blocker mode - place a random blocker after each move
+    if (isBlockerMode && !winResult && !isDraw) {
+      const blockerResult = placeRandomBlocker(newBoard)
+      if (blockerResult.blockerPosition !== null) {
+        newBoard = blockerResult.board
+        updates.board = newBoard
+        // Re-check for draw after placing blocker
+        isDraw = checkDrawWithBlockers(newBoard)
+        if (isDraw) {
+          updates.status = 'completed'
+          updates.winner = null
+          updates.completed_at = new Date().toISOString()
+        }
+      }
     }
 
     if (winResult) {

@@ -3,8 +3,23 @@ import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings, SYMBOL_THEMES } from '../../context/SettingsContext'
 import { useSound, SOUND_NAMES } from '../../hooks/useSound'
+import { BLOCKER_MARKER } from '../../lib/gameLogic'
 
-export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode, index = 0 }) {
+export function Cell({
+  value,
+  onClick,
+  onHover,
+  disabled,
+  isWinningCell,
+  currentPlayer,
+  boardSize = 3,
+  decayStatus,
+  isGravityPreview,
+  isGravityMode,
+  index = 0,
+  isBombed = false,
+  isFogged = false,
+}) {
   const { currentTheme } = useSettings()
   const { playSound } = useSound()
 
@@ -34,6 +49,9 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   const hasDecay = decayStatus && decayStatus.turnsRemaining !== null
   const decayOpacity = hasDecay ? decayStatus.opacity : 1
   const isAboutToDecay = hasDecay && decayStatus.isAboutToDecay
+
+  // Check if cell has a blocker
+  const isBlocker = value === BLOCKER_MARKER
 
   // Adjust sizes based on board size
   const getSizeClasses = (isPreview = false) => {
@@ -104,32 +122,65 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   }
 
   // In gravity mode, show preview only on the landing cell
-  const showHoverPreview = isGravityMode
-    ? isGravityPreview && !value
-    : !value && !disabled
+  // Don't show preview on bombed or blocked cells
+  const showHoverPreview = !isBombed && !isBlocker && !isFogged && (
+    isGravityMode
+      ? isGravityPreview && !value
+      : !value && !disabled
+  )
+
+  // Determine if cell is clickable
+  const isClickable = !isBombed && !isBlocker && !isFogged
 
   return (
     <button
       onClick={onClick}
       onMouseEnter={onHover}
-      disabled={disabled && !isGravityMode}
+      disabled={(disabled && !isGravityMode) || isBombed || isBlocker}
       className={cn(
         'aspect-square w-full flex items-center justify-center relative group',
         'bg-white dark:bg-slate-900 rounded-xl overflow-visible',
         'transition-all duration-200',
         'focus:outline-none',
+        // Bombed cell styling
+        isBombed && 'bg-rose-100 dark:bg-rose-900/30 cursor-not-allowed',
+        // Blocker cell styling
+        isBlocker && 'bg-amber-100 dark:bg-amber-900/30 cursor-not-allowed',
+        // Fog of war styling
+        isFogged && 'bg-slate-300 dark:bg-slate-700 cursor-pointer',
         // Normal hover for non-gravity mode
-        !isGravityMode && !disabled && !value && 'hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer',
+        !isBombed && !isBlocker && !isFogged && !isGravityMode && !disabled && !value && 'hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer',
         // Gravity mode - all cells in column are clickable
-        isGravityMode && !disabled && 'cursor-pointer',
-        isGravityMode && isGravityPreview && !value && 'bg-slate-50 dark:bg-slate-800',
-        disabled && !value && !isGravityMode && 'cursor-not-allowed',
+        !isBombed && !isBlocker && !isFogged && isGravityMode && !disabled && 'cursor-pointer',
+        !isBombed && !isBlocker && !isFogged && isGravityMode && isGravityPreview && !value && 'bg-slate-50 dark:bg-slate-800',
+        !isBombed && !isBlocker && !isFogged && disabled && !value && !isGravityMode && 'cursor-not-allowed',
         isWinningCell && 'bg-primary-50 dark:bg-primary-900/30 ring-2 ring-primary-500',
         isAboutToDecay && !isWinningCell && 'animate-pulse ring-2 ring-amber-400'
       )}
     >
-      {/* Main symbol with decay opacity */}
-      {value && (
+      {/* Bombed cell indicator */}
+      {isBombed && (
+        <div className="flex items-center justify-center">
+          <span className="text-2xl sm:text-3xl animate-pulse">💣</span>
+        </div>
+      )}
+
+      {/* Blocker cell indicator */}
+      {isBlocker && (
+        <div className="flex items-center justify-center cell-enter">
+          <span className="text-2xl sm:text-3xl">🚧</span>
+        </div>
+      )}
+
+      {/* Fog of war overlay - shows on all fogged cells including hidden opponent pieces */}
+      {isFogged && (
+        <div className="flex items-center justify-center">
+          <span className="text-2xl sm:text-3xl opacity-60">🌫️</span>
+        </div>
+      )}
+
+      {/* Main symbol with decay opacity (hidden if fogged and not player's piece) */}
+      {value && !isBlocker && !isFogged && (
         <div
           key={`${value}-${animationKey}`}
           style={{
@@ -147,7 +198,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
       )}
 
       {/* Decay turns remaining indicator */}
-      {hasDecay && value && (
+      {hasDecay && value && !isBlocker && !isFogged && (
         <span
           className={cn(
             'absolute top-1 right-1 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center',

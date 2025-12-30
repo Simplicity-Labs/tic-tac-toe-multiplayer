@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Bot, Users, Zap, Brain, Sparkles, Play, Clock, Grid3X3, X, Timer, Gamepad2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -58,9 +57,8 @@ export default function Dashboard() {
   const { activeGame, refetch: refetchActiveGame, forfeitGame, forfeitLoading } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
-  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize, turnDuration, setTurnDuration, gameMode, setGameMode, gameModeOptions, opponentType, setOpponentType } = useSettings()
+  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize, turnDuration, setTurnDuration, gameMode, setGameMode, gameModeOptions, opponentType, setOpponentType, botDifficulty: selectedDifficulty, setBotDifficulty: setSelectedDifficulty } = useSettings()
   const { toast } = useToast()
-  const [selectedDifficulty, setSelectedDifficulty] = useState('hard')
 
   const handleCreateGame = async () => {
     const { data, error, existingGameId } = await createGame(false, 'hard', selectedBoardSize, turnDuration, gameMode)

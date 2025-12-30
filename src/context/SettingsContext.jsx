@@ -41,6 +41,9 @@ export const GAME_MODE_OPTIONS = [
   { id: 'decay', name: 'Decay', description: 'Pieces fade after 4 turns', icon: '⏳' },
   { id: 'gravity', name: 'Gravity', description: 'Pieces fall to the bottom', icon: '⬇️' },
   { id: 'random', name: 'Random Start', description: 'Board starts with pieces', icon: '🎲' },
+  { id: 'bomb', name: 'Bomb', description: 'Random cells get bombed!', icon: '💣' },
+  { id: 'blocker', name: 'Blocker', description: 'Place a blocker each turn', icon: '🚧' },
+  { id: 'fog', name: 'Fog of War', description: 'Hidden opponent pieces', icon: '🌫️' },
 ]
 
 // Symbol theme definitions
@@ -241,7 +244,7 @@ export function SettingsProvider({ children }) {
 
   const [gameMode, setGameModeState] = useState(() => {
     const stored = getStoredSettings()
-    if (stored?.gameMode && ['classic', 'misere', 'decay', 'gravity', 'random'].includes(stored.gameMode)) {
+    if (stored?.gameMode && ['classic', 'misere', 'decay', 'gravity', 'random', 'bomb', 'blocker', 'fog'].includes(stored.gameMode)) {
       return stored.gameMode
     }
     return 'classic' // Default to classic
@@ -253,6 +256,14 @@ export function SettingsProvider({ children }) {
       return stored.opponentType
     }
     return 'human' // Default to human
+  })
+
+  const [botDifficulty, setBotDifficultyState] = useState(() => {
+    const stored = getStoredSettings()
+    if (stored?.botDifficulty && ['easy', 'medium', 'hard'].includes(stored.botDifficulty)) {
+      return stored.botDifficulty
+    }
+    return 'hard' // Default to hard
   })
 
   const [soundEnabled, setSoundEnabledState] = useState(() => {
@@ -316,7 +327,7 @@ export function SettingsProvider({ children }) {
   }
 
   const setGameMode = (mode) => {
-    if (['classic', 'misere', 'decay', 'gravity', 'random'].includes(mode)) {
+    if (['classic', 'misere', 'decay', 'gravity', 'random', 'bomb', 'blocker', 'fog'].includes(mode)) {
       setGameModeState(mode)
       const stored = getStoredSettings() || {}
       storeSettings({ ...stored, gameMode: mode })
@@ -328,6 +339,14 @@ export function SettingsProvider({ children }) {
       setOpponentTypeState(type)
       const stored = getStoredSettings() || {}
       storeSettings({ ...stored, opponentType: type })
+    }
+  }
+
+  const setBotDifficulty = (difficulty) => {
+    if (['easy', 'medium', 'hard'].includes(difficulty)) {
+      setBotDifficultyState(difficulty)
+      const stored = getStoredSettings() || {}
+      storeSettings({ ...stored, botDifficulty: difficulty })
     }
   }
 
@@ -373,6 +392,8 @@ export function SettingsProvider({ children }) {
     gameModeOptions: GAME_MODE_OPTIONS,
     opponentType,
     setOpponentType,
+    botDifficulty,
+    setBotDifficulty,
     soundEnabled,
     setSoundEnabled,
     soundVolume,

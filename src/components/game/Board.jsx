@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { cn } from '../../lib/utils'
 import { Cell } from './Cell'
-import { checkWinner, isEmpty, getBoardSize, getBoardDimensions, getColumn, getColumnPreviewPosition } from '../../lib/gameLogic'
+import { checkWinner, isEmpty, getBoardSize, getBoardDimensions, getColumn, getColumnPreviewPosition, getVisibleCells } from '../../lib/gameLogic'
 
-export function Board({ board, onCellClick, disabled, currentPlayer, decayStatusArray, isGravityMode }) {
+export function Board({ board, onCellClick, disabled, currentPlayer, decayStatusArray, isGravityMode, bombedCells = [], isFogMode = false, playerSymbol = null }) {
   const [hoveredColumn, setHoveredColumn] = useState(null)
 
   // Guard against undefined/null board (e.g., when game is deleted)
@@ -18,6 +18,11 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
   // Calculate preview position for gravity mode
   const gravityPreviewPosition = isGravityMode && hoveredColumn !== null && !disabled
     ? getColumnPreviewPosition(board, hoveredColumn, boardSize)
+    : null
+
+  // Calculate visible cells for fog of war mode
+  const visibleCells = isFogMode && playerSymbol
+    ? getVisibleCells(board, playerSymbol, boardSize)
     : null
 
   const handleCellHover = (index) => {
@@ -42,22 +47,29 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
         )}
         onMouseLeave={handleBoardLeave}
       >
-        {board.map((cell, index) => (
-          <Cell
-            key={index}
-            index={index}
-            value={cell}
-            onClick={() => onCellClick(index)}
-            onHover={() => handleCellHover(index)}
-            disabled={disabled || (!isGravityMode && !isEmpty(cell))}
-            isWinningCell={winResult?.line?.includes(index)}
-            currentPlayer={currentPlayer}
-            boardSize={boardSize}
-            decayStatus={decayStatusArray?.[index]}
-            isGravityPreview={gravityPreviewPosition === index}
-            isGravityMode={isGravityMode}
-          />
-        ))}
+        {board.map((cell, index) => {
+          const isBombed = bombedCells.includes(index)
+          const isFogged = isFogMode && visibleCells && !visibleCells.has(index)
+
+          return (
+            <Cell
+              key={index}
+              index={index}
+              value={cell}
+              onClick={() => onCellClick(index)}
+              onHover={() => handleCellHover(index)}
+              disabled={disabled || (!isGravityMode && !isEmpty(cell)) || isBombed}
+              isWinningCell={winResult?.line?.includes(index)}
+              currentPlayer={currentPlayer}
+              boardSize={boardSize}
+              decayStatus={decayStatusArray?.[index]}
+              isGravityPreview={gravityPreviewPosition === index}
+              isGravityMode={isGravityMode}
+              isBombed={isBombed}
+              isFogged={isFogged}
+            />
+          )
+        })}
       </div>
 
       {/* Win line overlay */}

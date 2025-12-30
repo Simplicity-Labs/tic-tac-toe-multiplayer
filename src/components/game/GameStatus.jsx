@@ -23,6 +23,9 @@ export function GameStatus({
   const isGravityMode = game?.game_mode === 'gravity'
   const isMisereMode = game?.game_mode === 'misere'
   const isRandomMode = game?.game_mode === 'random'
+  const isBombMode = game?.game_mode === 'bomb'
+  const isBlockerMode = game?.game_mode === 'blocker'
+  const isFogMode = game?.game_mode === 'fog'
 
   // Get game mode badge info
   const getModeBadge = () => {
@@ -30,6 +33,9 @@ export function GameStatus({
     if (isDecayMode) return { icon: '⏳', text: 'DECAY', color: 'bg-amber-500' }
     if (isGravityMode) return { icon: '⬇️', text: 'GRAVITY', color: 'bg-blue-500' }
     if (isRandomMode) return { icon: '🎲', text: 'RANDOM START', color: 'bg-purple-500' }
+    if (isBombMode) return { icon: '💣', text: 'BOMB', color: 'bg-rose-600' }
+    if (isBlockerMode) return { icon: '🚧', text: 'BLOCKER', color: 'bg-amber-600' }
+    if (isFogMode) return { icon: '🌫️', text: 'FOG OF WAR', color: 'bg-slate-600' }
     return null
   }
 
