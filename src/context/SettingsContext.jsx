@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState } from 'react'
 
 const SettingsContext = createContext({})
 
@@ -213,6 +213,15 @@ export function SettingsProvider({ children }) {
     return 3
   })
 
+  const [turnDuration, setTurnDurationState] = useState(() => {
+    const stored = getStoredSettings()
+    // null = no timer, otherwise a number in seconds
+    if (stored?.turnDuration !== undefined) {
+      return stored.turnDuration
+    }
+    return 30 // Default 30 seconds
+  })
+
   const setAdminMode = (enabled) => {
     setAdminModeState(enabled)
     const stored = getStoredSettings() || {}
@@ -250,6 +259,13 @@ export function SettingsProvider({ children }) {
     }
   }
 
+  const setTurnDuration = (duration) => {
+    // duration can be null (no timer) or a positive number
+    setTurnDurationState(duration)
+    const stored = getStoredSettings() || {}
+    storeSettings({ ...stored, turnDuration: duration })
+  }
+
   const currentTheme = SYMBOL_THEMES[symbolTheme] || SYMBOL_THEMES.classic
   const currentBoardSizeOption = BOARD_SIZE_OPTIONS.find(o => o.size === boardSize) || BOARD_SIZE_OPTIONS[0]
   const currentHolidayTheme = getCurrentHolidayThemeId() ? SYMBOL_THEMES[getCurrentHolidayThemeId()] : null
@@ -270,6 +286,8 @@ export function SettingsProvider({ children }) {
     setBoardSize,
     currentBoardSizeOption,
     boardSizeOptions: BOARD_SIZE_OPTIONS,
+    turnDuration,
+    setTurnDuration,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

@@ -116,11 +116,11 @@ export default function Game() {
   }, [isGameActive, isPlayer])
 
   // Timer for the current turn
-  const { timeRemaining, isLow, percentage } = useTimer(
+  const { timeRemaining, formattedTime, isLow, percentage, timerEnabled } = useTimer(
     game?.turn_started_at,
     game?.status === 'in_progress' && isMyTurn(),
     () => {
-      if (isMyTurn()) {
+      if (isMyTurn() && timerEnabled) {
         handleTimeout()
         toast({
           title: 'Time out!',
@@ -128,7 +128,8 @@ export default function Game() {
           variant: 'destructive',
         })
       }
-    }
+    },
+    game?.turn_duration
   )
 
   // Handle AI move
@@ -382,8 +383,10 @@ export default function Game() {
           playerO={playerO}
           currentUserId={user?.id}
           timeRemaining={timeRemaining}
+          formattedTime={formattedTime}
           isLow={isLow}
           percentage={percentage}
+          timerEnabled={timerEnabled}
         />
         {/* Reaction bubbles from opponent/AI */}
         <div className="absolute right-2 top-0">

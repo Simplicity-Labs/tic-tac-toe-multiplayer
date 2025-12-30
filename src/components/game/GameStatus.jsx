@@ -8,8 +8,10 @@ export function GameStatus({
   playerO,
   currentUserId,
   timeRemaining,
+  formattedTime,
   isLow,
   percentage,
+  timerEnabled = true,
 }) {
   const isMyTurn = game?.current_turn === currentUserId
   const isPlayerX = game?.player_x === currentUserId
@@ -30,11 +32,18 @@ export function GameStatus({
       <div className="flex flex-col items-center flex-shrink-0">
         {game?.status === 'in_progress' && (
           <>
-            <Timer
-              timeRemaining={timeRemaining}
-              isLow={isLow}
-              percentage={percentage}
-            />
+            {timerEnabled ? (
+              <Timer
+                timeRemaining={timeRemaining}
+                formattedTime={formattedTime}
+                isLow={isLow}
+                percentage={percentage}
+              />
+            ) : (
+              <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <span className="text-[10px] sm:text-xs text-slate-500 font-medium">No Timer</span>
+              </div>
+            )}
             <p className={cn(
               'mt-1 text-[10px] sm:text-xs font-medium',
               isMyTurn ? 'text-primary-500' : 'text-slate-500'

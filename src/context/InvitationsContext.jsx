@@ -174,10 +174,10 @@ export function InvitationsProvider({ children }) {
   }, [])
 
   const sendInvite = useCallback(
-    async (targetUser, boardSize = 3) => {
+    async (targetUser, boardSize = 3, turnDuration = 30) => {
       if (!user || !profile) return { error: 'Not authenticated' }
 
-      console.log('Creating invite game for target user:', targetUser.id, 'board size:', boardSize)
+      console.log('Creating invite game for target user:', targetUser.id, 'board size:', boardSize, 'turn duration:', turnDuration)
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
@@ -190,6 +190,7 @@ export function InvitationsProvider({ children }) {
           turn_started_at: new Date().toISOString(),
           invited_player_id: targetUser.id, // Mark as private invite
           board_size: boardSize,
+          turn_duration: turnDuration,
         })
         .select()
         .single()
@@ -204,6 +205,7 @@ export function InvitationsProvider({ children }) {
         await sendBroadcast(targetUser.id, 'invite', {
           gameId: game.id,
           boardSize: boardSize,
+          turnDuration: turnDuration,
           from: {
             id: user.id,
             username: profile.username,
@@ -219,6 +221,7 @@ export function InvitationsProvider({ children }) {
       setSentInvite({
         gameId: game.id,
         boardSize: boardSize,
+        turnDuration: turnDuration,
         to: targetUser,
         sentAt: Date.now(),
       })

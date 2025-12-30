@@ -9,7 +9,7 @@ import {
   isEmpty,
 } from '../lib/gameLogic'
 
-const TURN_DURATION = 10 // seconds
+const DEFAULT_TURN_DURATION = 30 // seconds
 
 export function useGame(gameId) {
   const { user, profile } = useAuth()
@@ -655,7 +655,7 @@ export function useCreateGame() {
     return data
   }
 
-  const createGame = async (isAI = false, aiDifficulty = 'hard', boardSize = 3) => {
+  const createGame = async (isAI = false, aiDifficulty = 'hard', boardSize = 3, turnDuration = DEFAULT_TURN_DURATION) => {
     if (!user) return { error: 'Not authenticated' }
 
     setLoading(true)
@@ -679,6 +679,7 @@ export function useCreateGame() {
           ai_difficulty: isAI ? aiDifficulty : null,
           turn_started_at: new Date().toISOString(),
           board_size: boardSize,
+          turn_duration: turnDuration,
         })
         .select()
         .single()

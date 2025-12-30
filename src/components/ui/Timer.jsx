@@ -1,6 +1,11 @@
 import { cn } from '../../lib/utils'
 
-export function Timer({ timeRemaining, isLow, percentage, className }) {
+export function Timer({ timeRemaining, formattedTime, isLow, percentage, className }) {
+  // Use formattedTime if provided, otherwise fall back to timeRemaining
+  const displayTime = formattedTime || timeRemaining
+  // Smaller text for longer formatted times
+  const isLongFormat = displayTime && displayTime.toString().length > 3
+
   return (
     <div className={cn('flex flex-col items-center gap-1', className)}>
       <div className="relative h-12 w-12 sm:h-16 sm:w-16">
@@ -36,11 +41,12 @@ export function Timer({ timeRemaining, isLow, percentage, className }) {
         <div className="absolute inset-0 flex items-center justify-center">
           <span
             className={cn(
-              'text-lg sm:text-xl font-bold tabular-nums',
+              'font-bold tabular-nums',
+              isLongFormat ? 'text-[10px] sm:text-xs' : 'text-lg sm:text-xl',
               isLow && 'text-rose-500 animate-pulse'
             )}
           >
-            {timeRemaining}
+            {displayTime}
           </span>
         </div>
       </div>
