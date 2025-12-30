@@ -28,9 +28,10 @@ const getCurrentHolidayThemeId = () => {
 
 // Board size options
 export const BOARD_SIZE_OPTIONS = [
-  { size: 3, label: '3x3', description: 'Classic - 3 in a row to win' },
-  { size: 4, label: '4x4', description: 'Extended - 3 in a row to win' },
-  { size: 5, label: '5x5', description: 'Large - 4 in a row to win' },
+  { size: 3, label: '3×3', description: 'Classic - 3 in a row to win' },
+  { size: 4, label: '4×4', description: 'Extended - 3 in a row to win' },
+  { size: 5, label: '5×5', description: 'Large - 4 in a row to win' },
+  { size: 7, label: '7×6', description: 'Connect 4 - 4 in a row to win' },
 ]
 
 // Game mode options
@@ -76,6 +77,13 @@ export const SYMBOL_THEMES = {
     description: 'Pizza vs Burger',
     x: { symbol: '🍕', color: '', winColor: '' },
     o: { symbol: '🍔', color: '', winColor: '' },
+  },
+  connect4: {
+    id: 'connect4',
+    name: 'Connect 4',
+    description: 'Classic red & yellow discs',
+    x: { symbol: '●', color: 'text-yellow-500', winColor: 'text-yellow-400', isDisc: true },
+    o: { symbol: '●', color: 'text-red-500', winColor: 'text-red-400', isDisc: true },
   },
   // Holiday themes
   newyear: {
@@ -214,7 +222,7 @@ export function SettingsProvider({ children }) {
 
   const [boardSize, setBoardSizeState] = useState(() => {
     const stored = getStoredSettings()
-    if (stored?.boardSize && [3, 4, 5].includes(stored.boardSize)) {
+    if (stored?.boardSize && [3, 4, 5, 7].includes(stored.boardSize)) {
       return stored.boardSize
     }
     return 3
@@ -235,6 +243,14 @@ export function SettingsProvider({ children }) {
       return stored.gameMode
     }
     return 'classic' // Default to classic
+  })
+
+  const [opponentType, setOpponentTypeState] = useState(() => {
+    const stored = getStoredSettings()
+    if (stored?.opponentType && ['human', 'bot'].includes(stored.opponentType)) {
+      return stored.opponentType
+    }
+    return 'human' // Default to human
   })
 
   const setAdminMode = (enabled) => {
@@ -269,7 +285,7 @@ export function SettingsProvider({ children }) {
   }
 
   const setBoardSize = (size) => {
-    if ([3, 4, 5].includes(size)) {
+    if ([3, 4, 5, 7].includes(size)) {
       setBoardSizeState(size)
       const stored = getStoredSettings() || {}
       storeSettings({ ...stored, boardSize: size })
@@ -288,6 +304,14 @@ export function SettingsProvider({ children }) {
       setGameModeState(mode)
       const stored = getStoredSettings() || {}
       storeSettings({ ...stored, gameMode: mode })
+    }
+  }
+
+  const setOpponentType = (type) => {
+    if (['human', 'bot'].includes(type)) {
+      setOpponentTypeState(type)
+      const stored = getStoredSettings() || {}
+      storeSettings({ ...stored, opponentType: type })
     }
   }
 
@@ -318,6 +342,8 @@ export function SettingsProvider({ children }) {
     setGameMode,
     currentGameModeOption,
     gameModeOptions: GAME_MODE_OPTIONS,
+    opponentType,
+    setOpponentType,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

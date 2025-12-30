@@ -15,15 +15,15 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   const getSizeClasses = (isPreview = false) => {
     if (isPreview) {
       return {
-        x: boardSize >= 5 ? 'w-6 h-6 sm:w-8 sm:h-8' : boardSize === 4 ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-12 sm:h-12',
-        o: boardSize >= 5 ? 'w-5 h-5 sm:w-7 sm:h-7' : boardSize === 4 ? 'w-6 h-6 sm:w-8 sm:h-8' : 'w-8 h-8 sm:w-10 sm:h-10',
-        emoji: boardSize >= 5 ? 'text-xl sm:text-2xl' : boardSize === 4 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl',
+        x: boardSize >= 7 ? 'w-5 h-5 sm:w-6 sm:h-6' : boardSize >= 5 ? 'w-6 h-6 sm:w-8 sm:h-8' : boardSize === 4 ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-12 sm:h-12',
+        o: boardSize >= 7 ? 'w-4 h-4 sm:w-5 sm:h-5' : boardSize >= 5 ? 'w-5 h-5 sm:w-7 sm:h-7' : boardSize === 4 ? 'w-6 h-6 sm:w-8 sm:h-8' : 'w-8 h-8 sm:w-10 sm:h-10',
+        emoji: boardSize >= 7 ? 'text-lg sm:text-xl' : boardSize >= 5 ? 'text-xl sm:text-2xl' : boardSize === 4 ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl',
       }
     }
     return {
-      x: boardSize >= 5 ? 'w-8 h-8 sm:w-10 sm:h-10' : boardSize === 4 ? 'w-10 h-10 sm:w-12 sm:h-12' : 'w-12 h-12 sm:w-16 sm:h-16',
-      o: boardSize >= 5 ? 'w-7 h-7 sm:w-9 sm:h-9' : boardSize === 4 ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-14 sm:h-14',
-      emoji: boardSize >= 5 ? 'text-2xl sm:text-3xl' : boardSize === 4 ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl',
+      x: boardSize >= 7 ? 'w-6 h-6 sm:w-8 sm:h-8' : boardSize >= 5 ? 'w-8 h-8 sm:w-10 sm:h-10' : boardSize === 4 ? 'w-10 h-10 sm:w-12 sm:h-12' : 'w-12 h-12 sm:w-16 sm:h-16',
+      o: boardSize >= 7 ? 'w-5 h-5 sm:w-7 sm:h-7' : boardSize >= 5 ? 'w-7 h-7 sm:w-9 sm:h-9' : boardSize === 4 ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-10 h-10 sm:w-14 sm:h-14',
+      emoji: boardSize >= 7 ? 'text-xl sm:text-2xl' : boardSize >= 5 ? 'text-2xl sm:text-3xl' : boardSize === 4 ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl',
     }
   }
 
@@ -55,6 +55,23 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
           )}
           strokeWidth={isPreview ? 2 : 3}
         />
+      )
+    }
+
+    // Connect 4 disc theme - render colored filled circles
+    if (config.isDisc) {
+      return (
+        <span
+          className={cn(
+            sizes.emoji,
+            !isPreview && animationClass,
+            isPreview ? 'opacity-40' : '',
+            isPreview ? config.color : isWinningCell ? config.winColor : config.color
+          )}
+          style={{ textShadow: !isPreview ? '0 2px 4px rgba(0,0,0,0.2)' : 'none' }}
+        >
+          {config.symbol}
+        </span>
       )
     }
 

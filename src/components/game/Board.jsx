@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cn } from '../../lib/utils'
 import { Cell } from './Cell'
-import { checkWinner, isEmpty, getBoardSize, getColumn, getColumnPreviewPosition } from '../../lib/gameLogic'
+import { checkWinner, isEmpty, getBoardSize, getBoardDimensions, getColumn, getColumnPreviewPosition } from '../../lib/gameLogic'
 
 export function Board({ board, onCellClick, disabled, currentPlayer, decayStatusArray, isGravityMode }) {
   const [hoveredColumn, setHoveredColumn] = useState(null)
@@ -12,6 +12,7 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
   }
 
   const boardSize = getBoardSize(board)
+  const { cols, rows } = getBoardDimensions(boardSize)
   const winResult = checkWinner(board)
 
   // Calculate preview position for gravity mode
@@ -34,9 +35,10 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
       <div
         className={cn(
           'grid gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl',
-          boardSize === 3 && 'grid-cols-3',
-          boardSize === 4 && 'grid-cols-4',
-          boardSize === 5 && 'grid-cols-5'
+          cols === 3 && 'grid-cols-3',
+          cols === 4 && 'grid-cols-4',
+          cols === 5 && 'grid-cols-5',
+          cols === 7 && 'grid-cols-7'
         )}
         onMouseLeave={handleBoardLeave}
       >
@@ -66,16 +68,19 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
 }
 
 function WinLine({ line, boardSize }) {
-  const getLineCoordinates = () => {
-    const cellSize = 100 / boardSize
+  const { cols, rows } = getBoardDimensions(boardSize)
 
-    // Generate positions dynamically based on board size
+  const getLineCoordinates = () => {
+    const cellWidth = 100 / cols
+    const cellHeight = 100 / rows
+
+    // Generate positions dynamically based on board dimensions
     const getPosition = (index) => {
-      const row = Math.floor(index / boardSize)
-      const col = index % boardSize
+      const row = Math.floor(index / cols)
+      const col = index % cols
       return {
-        x: cellSize * (col + 0.5),
-        y: cellSize * (row + 0.5),
+        x: cellWidth * (col + 0.5),
+        y: cellHeight * (row + 0.5),
       }
     }
 

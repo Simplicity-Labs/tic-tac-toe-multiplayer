@@ -58,10 +58,9 @@ export default function Dashboard() {
   const { activeGame, refetch: refetchActiveGame, forfeitGame, forfeitLoading } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
-  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize, turnDuration, setTurnDuration, gameMode, setGameMode, gameModeOptions } = useSettings()
+  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize, turnDuration, setTurnDuration, gameMode, setGameMode, gameModeOptions, setSymbolTheme, opponentType, setOpponentType } = useSettings()
   const { toast } = useToast()
   const [selectedDifficulty, setSelectedDifficulty] = useState('hard')
-  const [opponentType, setOpponentType] = useState('human') // 'human' or 'bot'
 
   const handleCreateGame = async () => {
     const { data, error, existingGameId } = await createGame(false, 'hard', selectedBoardSize, turnDuration, gameMode)
@@ -287,13 +286,21 @@ export default function Dashboard() {
                       <Grid3X3 className="h-4 w-4 text-slate-500" />
                       <span className="text-sm font-medium">Board Size</span>
                     </div>
-                    <div className="flex gap-2">
-                      {[3, 4, 5].map((size) => (
+                    <div className="grid grid-cols-4 gap-1">
+                      {[3, 4, 5, 7].map((size) => (
                         <button
                           key={size}
-                          onClick={() => setSelectedBoardSize(size)}
+                          onClick={() => {
+                            setSelectedBoardSize(size)
+                            // Auto-enable gravity and Connect 4 theme for Connect 4 board
+                            if (size === 7) {
+                              setGameMode('gravity')
+                              setSymbolTheme('connect4')
+                            }
+                          }}
+                          title={BOARD_SIZES[size].description}
                           className={cn(
-                            'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all',
+                            'px-2 py-2 rounded-lg text-xs font-medium transition-all',
                             selectedBoardSize === size
                               ? 'bg-primary-500 text-white'
                               : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -304,7 +311,8 @@ export default function Dashboard() {
                       ))}
                     </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      {selectedBoardSize === 5 ? '4 in a row' : '3 in a row'} to win
+                      {selectedBoardSize >= 5 ? '4 in a row' : '3 in a row'} to win
+                      {selectedBoardSize === 7 && ' • Connect 4 style'}
                     </p>
                   </div>
 

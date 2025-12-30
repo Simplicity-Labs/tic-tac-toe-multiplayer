@@ -1,8 +1,10 @@
 // Board size configurations
+// For rectangular boards: cols = width, rows = height
 export const BOARD_SIZES = {
-  3: { size: 3, winLength: 3, label: '3x3', description: 'Classic' },
-  4: { size: 4, winLength: 3, label: '4x4', description: '3 in a row' },
-  5: { size: 5, winLength: 4, label: '5x5', description: '4 in a row' },
+  3: { size: 3, cols: 3, rows: 3, winLength: 3, label: '3×3', description: 'Classic' },
+  4: { size: 4, cols: 4, rows: 4, winLength: 3, label: '4×4', description: '3 in a row' },
+  5: { size: 5, cols: 5, rows: 5, winLength: 4, label: '5×5', description: '4 in a row' },
+  7: { size: 7, cols: 7, rows: 6, winLength: 4, label: '7×6', description: 'Connect 4' },
 }
 
 // Legacy 3x3 winning combinations for backwards compatibility
@@ -17,18 +19,18 @@ export const WINNING_COMBINATIONS = [
   [2, 4, 6], // Diagonal top-right to bottom-left
 ]
 
-// Generate winning combinations for any board size
+// Generate winning combinations for any board size (supports rectangular boards)
 export function getWinningCombinations(boardSize = 3) {
   const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
-  const { size, winLength } = config
+  const { cols, rows, winLength } = config
   const combinations = []
 
-  // Helper to get index from row, col
-  const getIndex = (row, col) => row * size + col
+  // Helper to get index from row, col (row-major order)
+  const getIndex = (row, col) => row * cols + col
 
   // Horizontal wins
-  for (let row = 0; row < size; row++) {
-    for (let startCol = 0; startCol <= size - winLength; startCol++) {
+  for (let row = 0; row < rows; row++) {
+    for (let startCol = 0; startCol <= cols - winLength; startCol++) {
       const combo = []
       for (let i = 0; i < winLength; i++) {
         combo.push(getIndex(row, startCol + i))
@@ -38,8 +40,8 @@ export function getWinningCombinations(boardSize = 3) {
   }
 
   // Vertical wins
-  for (let col = 0; col < size; col++) {
-    for (let startRow = 0; startRow <= size - winLength; startRow++) {
+  for (let col = 0; col < cols; col++) {
+    for (let startRow = 0; startRow <= rows - winLength; startRow++) {
       const combo = []
       for (let i = 0; i < winLength; i++) {
         combo.push(getIndex(startRow + i, col))
@@ -49,8 +51,8 @@ export function getWinningCombinations(boardSize = 3) {
   }
 
   // Diagonal wins (top-left to bottom-right)
-  for (let startRow = 0; startRow <= size - winLength; startRow++) {
-    for (let startCol = 0; startCol <= size - winLength; startCol++) {
+  for (let startRow = 0; startRow <= rows - winLength; startRow++) {
+    for (let startCol = 0; startCol <= cols - winLength; startCol++) {
       const combo = []
       for (let i = 0; i < winLength; i++) {
         combo.push(getIndex(startRow + i, startCol + i))
@@ -60,8 +62,8 @@ export function getWinningCombinations(boardSize = 3) {
   }
 
   // Diagonal wins (top-right to bottom-left)
-  for (let startRow = 0; startRow <= size - winLength; startRow++) {
-    for (let startCol = winLength - 1; startCol < size; startCol++) {
+  for (let startRow = 0; startRow <= rows - winLength; startRow++) {
+    for (let startCol = winLength - 1; startCol < cols; startCol++) {
       const combo = []
       for (let i = 0; i < winLength; i++) {
         combo.push(getIndex(startRow + i, startCol - i))
@@ -80,6 +82,7 @@ export function getBoardSize(board) {
   if (length === 9) return 3
   if (length === 16) return 4
   if (length === 25) return 5
+  if (length === 42) return 7 // 7x6 Connect 4 style
   return 3
 }
 
@@ -130,6 +133,7 @@ function getMaxDepth(boardSize) {
     case 3: return 9  // Full search for 3x3
     case 4: return 6  // Limited for 4x4
     case 5: return 4  // More limited for 5x5
+    case 7: return 4  // Limited for 7x6 Connect 4
     default: return 4
   }
 }
@@ -229,6 +233,8 @@ export function getRandomMove(board) {
 export function getMediumMove(board) {
   const available = getAvailableMoves(board)
   const boardSize = getBoardSize(board)
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  const { cols, rows } = config
 
   // 60% chance to make a smart move, 40% random
   if (Math.random() < 0.6) {
@@ -247,8 +253,11 @@ export function getMediumMove(board) {
     }
 
     // Take center if available (works for odd-sized boards)
-    const center = Math.floor(board.length / 2)
-    if (boardSize % 2 === 1 && isEmpty(board[center])) return center
+    // For rectangular boards, take the center column's middle row
+    const centerCol = Math.floor(cols / 2)
+    const centerRow = Math.floor(rows / 2)
+    const center = centerRow * cols + centerCol
+    if (isEmpty(board[center])) return center
 
     // Take a corner
     const corners = getCorners(boardSize).filter(i => isEmpty(board[i]))
@@ -260,10 +269,16 @@ export function getMediumMove(board) {
   return getRandomMove(board)
 }
 
-// Get corner indices for a board
+// Get corner indices for a board (supports rectangular boards)
 function getCorners(boardSize) {
-  const size = boardSize
-  return [0, size - 1, size * (size - 1), size * size - 1]
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  const { cols, rows } = config
+  return [
+    0,                           // top-left
+    cols - 1,                    // top-right
+    cols * (rows - 1),           // bottom-left
+    cols * rows - 1              // bottom-right
+  ]
 }
 
 // Get AI move based on difficulty
@@ -279,10 +294,11 @@ export function getAIMove(board, difficulty = 'hard') {
   }
 }
 
-// Create an empty board
+// Create an empty board (supports rectangular boards)
 export function createEmptyBoard(boardSize = 3) {
-  const size = boardSize * boardSize
-  return Array(size).fill('')
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  const totalCells = config.cols * config.rows
+  return Array(totalCells).fill('')
 }
 
 // Format time remaining for display
@@ -322,10 +338,11 @@ export const GAME_MODES = {
 // Default decay turns before a piece disappears
 export const DEFAULT_DECAY_TURNS = 4
 
-// Create empty placed_at array for tracking piece ages
+// Create empty placed_at array for tracking piece ages (supports rectangular boards)
 export function createEmptyPlacedAt(boardSize = 3) {
-  const size = boardSize * boardSize
-  return Array(size).fill(null)
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  const totalCells = config.cols * config.rows
+  return Array(totalCells).fill(null)
 }
 
 // Apply decay to the board - removes pieces that have exceeded their lifespan
@@ -379,27 +396,37 @@ export function getDecayStatus(board, placedAt, currentTurn, decayAfter = DEFAUL
 // GRAVITY MODE LOGIC
 // ============================================
 
+// Get board dimensions (cols, rows) from board size key
+export function getBoardDimensions(boardSize) {
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  return { cols: config.cols, rows: config.rows }
+}
+
 // Get the column index from a board position
 export function getColumn(position, boardSize) {
-  return position % boardSize
+  const { cols } = getBoardDimensions(boardSize)
+  return position % cols
 }
 
 // Get the row index from a board position
 export function getRow(position, boardSize) {
-  return Math.floor(position / boardSize)
+  const { cols } = getBoardDimensions(boardSize)
+  return Math.floor(position / cols)
 }
 
 // Get the board position from row and column
 export function getPosition(row, col, boardSize) {
-  return row * boardSize + col
+  const { cols } = getBoardDimensions(boardSize)
+  return row * cols + col
 }
 
 // Find the lowest empty cell in a column (gravity drop position)
 export function getGravityDropPosition(board, clickedPosition, boardSize) {
+  const { cols, rows } = getBoardDimensions(boardSize)
   const col = getColumn(clickedPosition, boardSize)
 
   // Start from the bottom row and work up to find the lowest empty cell
-  for (let row = boardSize - 1; row >= 0; row--) {
+  for (let row = rows - 1; row >= 0; row--) {
     const pos = getPosition(row, col, boardSize)
     if (isEmpty(board[pos])) {
       return pos
@@ -419,8 +446,9 @@ export function isColumnFull(board, col, boardSize) {
 
 // Get all columns that are not full (valid moves in gravity mode)
 export function getAvailableColumns(board, boardSize) {
+  const { cols } = getBoardDimensions(boardSize)
   const columns = []
-  for (let col = 0; col < boardSize; col++) {
+  for (let col = 0; col < cols; col++) {
     if (!isColumnFull(board, col, boardSize)) {
       columns.push(col)
     }
@@ -430,7 +458,8 @@ export function getAvailableColumns(board, boardSize) {
 
 // Get the preview position for a column (where piece would land)
 export function getColumnPreviewPosition(board, col, boardSize) {
-  for (let row = boardSize - 1; row >= 0; row--) {
+  const { rows } = getBoardDimensions(boardSize)
+  for (let row = rows - 1; row >= 0; row--) {
     const pos = getPosition(row, col, boardSize)
     if (isEmpty(board[pos])) {
       return pos
