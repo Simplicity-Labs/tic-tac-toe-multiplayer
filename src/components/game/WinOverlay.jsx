@@ -202,7 +202,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in !mt-0">
       {/* Backdrop */}
       <div className={cn(
         "absolute inset-0 backdrop-blur-sm",

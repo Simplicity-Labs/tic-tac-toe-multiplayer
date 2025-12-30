@@ -347,27 +347,28 @@ export default function Game() {
   const isDisabled = !isMyTurn() || game.status !== 'in_progress'
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-3 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button
           variant="ghost"
+          size="sm"
           onClick={() => handleNavigateAway('/')}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          <ArrowLeft className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Back</span>
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {game.status === 'waiting' && (
-            <Button variant="outline" onClick={handleShare}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
+            <Button variant="outline" size="sm" onClick={handleShare}>
+              <Share2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Share</span>
             </Button>
           )}
           {isGameActive && isPlayer && (
-            <Button variant="destructive" onClick={() => setShowForfeitModal(true)}>
-              <Flag className="h-4 w-4 mr-2" />
-              Forfeit
+            <Button variant="destructive" size="sm" onClick={() => setShowForfeitModal(true)}>
+              <Flag className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Forfeit</span>
             </Button>
           )}
         </div>
