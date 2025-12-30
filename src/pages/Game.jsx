@@ -6,17 +6,26 @@ import { useInvitations } from '../context/InvitationsContext'
 import { usePresence } from '../hooks/usePresence'
 import { useGame, useCreateGame } from '../hooks/useGame'
 import { useTimer } from '../hooks/useTimer'
+import { useGameReactions } from '../hooks/useGameReactions'
 import { useToast } from '../components/ui/Toast'
 import { Button } from '../components/ui/Button'
 import { Board } from '../components/game/Board'
 import { GameStatus } from '../components/game/GameStatus'
 import { WinOverlay } from '../components/game/WinOverlay'
 import { GameClosedOverlay } from '../components/game/GameClosedOverlay'
+import { ReactionPicker } from '../components/game/ReactionPicker'
+import { ReactionBubbleContainer } from '../components/game/ReactionBubble'
+import {
+  getAIReactionToPlayerMove,
+  getAIReactionToOwnMove,
+  getAIReactionToPlayerEmoji,
+  getAIReactionToGameEnd,
+} from '../lib/aiPersonality'
 
 export default function Game() {
   const { gameId } = useParams()
   const navigate = useNavigate()
-  const { user, refreshProfile } = useAuth()
+  const { user, profile, refreshProfile } = useAuth()
   const { sentInvite } = useInvitations()
   const { setCurrentGame } = usePresence()
   const { toast } = useToast()
@@ -24,6 +33,7 @@ export default function Game() {
   const [showForfeitModal, setShowForfeitModal] = useState(false)
   const [gameClosed, setGameClosed] = useState({ show: false, reason: 'deleted' })
   const pendingNavigationRef = useRef(null)
+  const prevBoardRef = useRef(null)
 
   const {
     game,
@@ -38,6 +48,16 @@ export default function Game() {
     getPlayerSymbol,
     isMyTurn,
   } = useGame(gameId)
+
+  // Reaction system
+  const {
+    reactions,
+    sentReactions,
+    sendReaction,
+    addAIReaction,
+    canSend,
+    cooldownRemaining,
+  } = useGameReactions(gameId, user?.id, profile, game?.is_ai_game)
 
   // Check if game is active (can be forfeited)
   const isGameActive = game?.status === 'in_progress' || game?.status === 'waiting'
@@ -133,6 +153,74 @@ export default function Game() {
     }
   }, [game?.status, refreshProfile])
 
+  // AI reactions to board changes (for AI games)
+  useEffect(() => {
+    if (!game?.is_ai_game || !game?.board || game.status !== 'in_progress') {
+      prevBoardRef.current = game?.board || null
+      return
+    }
+
+    const prevBoard = prevBoardRef.current
+    const currentBoard = game.board
+
+    // Skip if no previous board (initial load)
+    if (!prevBoard) {
+      prevBoardRef.current = currentBoard
+      return
+    }
+
+    // Find what changed
+    const changedIndex = currentBoard.findIndex((cell, i) => cell !== prevBoard[i])
+    if (changedIndex === -1) {
+      prevBoardRef.current = currentBoard
+      return
+    }
+
+    const newSymbol = currentBoard[changedIndex]
+    const isPlayerMove = newSymbol === 'X' // Player is always X in AI games
+    const isAIMove = newSymbol === 'O'
+
+    if (isPlayerMove) {
+      // Player just moved - AI might react
+      const reaction = getAIReactionToPlayerMove({
+        boardBefore: prevBoard,
+        boardAfter: currentBoard,
+        difficulty: game.ai_difficulty || 'hard',
+        playerSymbol: 'X',
+      })
+      if (reaction) {
+        addAIReaction(reaction.emoji, reaction.delay)
+      }
+    } else if (isAIMove) {
+      // AI just moved - might taunt
+      const reaction = getAIReactionToOwnMove({
+        boardAfter: currentBoard,
+        difficulty: game.ai_difficulty || 'hard',
+        isWinningMove: game.status === 'completed' && game.winner === 'ai',
+        isBlockingMove: false, // Could calculate this but keeping simple for now
+      })
+      if (reaction) {
+        addAIReaction(reaction.emoji, reaction.delay)
+      }
+    }
+
+    prevBoardRef.current = currentBoard
+  }, [game?.board, game?.is_ai_game, game?.status, game?.ai_difficulty, game?.winner, addAIReaction])
+
+  // AI reaction to game end
+  useEffect(() => {
+    if (!game?.is_ai_game || game?.status !== 'completed') return
+
+    const reaction = getAIReactionToGameEnd({
+      winner: game.winner,
+      difficulty: game.ai_difficulty || 'hard',
+      isAIWinner: game.winner === 'ai',
+    })
+    if (reaction) {
+      addAIReaction(reaction.emoji, reaction.delay + 500) // Extra delay after game ends
+    }
+  }, [game?.status, game?.winner, game?.is_ai_game, game?.ai_difficulty, addAIReaction])
+
   const handleCellClick = async (position) => {
     if (!isMyTurn() || game?.status !== 'in_progress') return
 
@@ -143,6 +231,25 @@ export default function Game() {
         description: error,
         variant: 'destructive',
       })
+    }
+  }
+
+  // Handle sending a reaction
+  const handleReaction = async (emoji) => {
+    await sendReaction(emoji)
+
+    // If AI game, trigger AI response to player emoji
+    if (game?.is_ai_game) {
+      const reaction = getAIReactionToPlayerEmoji({
+        playerEmoji: emoji,
+        difficulty: game.ai_difficulty || 'hard',
+        isAIWinning: false, // Could calculate game advantage
+        isPlayerWinning: false,
+        gameOver: game.status === 'completed',
+      })
+      if (reaction) {
+        addAIReaction(reaction.emoji, reaction.delay)
+      }
     }
   }
 
@@ -266,16 +373,34 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Game status */}
-      <GameStatus
-        game={game}
-        playerX={playerX}
-        playerO={playerO}
-        currentUserId={user?.id}
-        timeRemaining={timeRemaining}
-        isLow={isLow}
-        percentage={percentage}
-      />
+      {/* Game status with reaction bubbles */}
+      <div className="relative">
+        <GameStatus
+          game={game}
+          playerX={playerX}
+          playerO={playerO}
+          currentUserId={user?.id}
+          timeRemaining={timeRemaining}
+          isLow={isLow}
+          percentage={percentage}
+        />
+        {/* Reaction bubbles from opponent/AI */}
+        <div className="absolute right-2 top-0">
+          <ReactionBubbleContainer
+            reactions={reactions}
+            position="right"
+            onReactionComplete={() => {}}
+          />
+        </div>
+        {/* Our sent reactions (visual feedback) */}
+        <div className="absolute left-2 top-0">
+          <ReactionBubbleContainer
+            reactions={sentReactions}
+            position="left"
+            onReactionComplete={() => {}}
+          />
+        </div>
+      </div>
 
       {/* Game board */}
       <Board
@@ -300,6 +425,18 @@ export default function Game() {
             You are spectating this game
           </p>
         )
+      )}
+
+      {/* Floating reaction picker */}
+      {isPlayer && game?.status === 'in_progress' && (
+        <div className="fixed bottom-6 left-6 z-30">
+          <ReactionPicker
+            onReact={handleReaction}
+            disabled={false}
+            canSend={canSend}
+            cooldownRemaining={cooldownRemaining}
+          />
+        </div>
       )}
 
       {/* Win overlay */}
