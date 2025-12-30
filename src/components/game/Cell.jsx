@@ -30,6 +30,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   const renderSymbol = (player, isPreview = false) => {
     const config = player === 'X' ? currentTheme.x : currentTheme.o
     const sizes = getSizeClasses(isPreview)
+    const animationClass = isGravityMode ? 'cell-fall' : 'cell-enter'
 
     if (isClassic) {
       // Use lucide icons for classic theme
@@ -38,7 +39,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
           <X
             className={cn(
               sizes.x,
-              isPreview ? '' : 'cell-enter',
+              isPreview ? '' : animationClass,
               isPreview ? '' : isWinningCell ? config.winColor : config.color
             )}
             strokeWidth={isPreview ? 2 : 3}
@@ -49,7 +50,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
         <Circle
           className={cn(
             sizes.o,
-            isPreview ? '' : 'cell-enter',
+            isPreview ? '' : animationClass,
             isPreview ? '' : isWinningCell ? config.winColor : config.color
           )}
           strokeWidth={isPreview ? 2 : 3}
@@ -62,7 +63,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
       <span
         className={cn(
           sizes.emoji,
-          !isPreview && 'cell-enter'
+          !isPreview && animationClass
         )}
       >
         {config.symbol}
