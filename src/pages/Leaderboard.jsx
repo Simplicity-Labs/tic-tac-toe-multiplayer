@@ -262,9 +262,9 @@ export default function Leaderboard() {
               {/* AI Stats - only show for all-time */}
               {period === 'all-time' && (
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Player vs AI</h3>
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Player vs Bot</h3>
                   <StatRow
-                    label="Easy AI"
+                    label="Easy Bot"
                     icon={Sparkles}
                     iconColor="text-emerald-500"
                     wins={selectedPlayer.ai_easy_wins}
@@ -272,7 +272,7 @@ export default function Leaderboard() {
                     draws={selectedPlayer.ai_easy_draws}
                   />
                   <StatRow
-                    label="Medium AI"
+                    label="Medium Bot"
                     icon={Zap}
                     iconColor="text-amber-500"
                     wins={selectedPlayer.ai_medium_wins}
@@ -280,7 +280,7 @@ export default function Leaderboard() {
                     draws={selectedPlayer.ai_medium_draws}
                   />
                   <StatRow
-                    label="Hard AI"
+                    label="Hard Bot"
                     icon={Brain}
                     iconColor="text-rose-500"
                     wins={selectedPlayer.ai_hard_wins}

@@ -76,7 +76,7 @@ export function StatsCard({ profile }) {
               )}
             >
               <Bot className="h-3 w-3" />
-              <span className="hidden sm:inline">AI</span>
+              <span className="hidden sm:inline">Bot</span>
             </button>
           </div>
         </div>

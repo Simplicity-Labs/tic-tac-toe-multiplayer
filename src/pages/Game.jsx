@@ -389,20 +389,22 @@ export default function Game() {
       />
 
       {/* Reaction bubbles - fixed position to show above overlay */}
-      {(reactions.length > 0 || sentReactions.length > 0) && (
-        <div className="fixed top-20 left-0 right-0 z-[60] pointer-events-none flex justify-between px-4 max-w-lg mx-auto">
-          {/* Our sent reactions (visual feedback) */}
+      <div className="fixed top-20 left-0 right-0 z-[60] pointer-events-none px-4 max-w-lg mx-auto">
+        {/* Our sent reactions (visual feedback) - always on LEFT */}
+        <div className="absolute left-4">
           <ReactionBubbleContainer
             reactions={sentReactions}
             onReactionComplete={() => {}}
           />
-          {/* Reaction bubbles from opponent/AI */}
+        </div>
+        {/* Reaction bubbles from opponent/AI - always on RIGHT */}
+        <div className="absolute right-4">
           <ReactionBubbleContainer
             reactions={reactions}
             onReactionComplete={() => {}}
           />
         </div>
-      )}
+      </div>
 
       {/* Game board */}
       <Board

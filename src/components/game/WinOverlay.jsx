@@ -192,10 +192,10 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
     colorClass = 'text-emerald-500'
   } else {
     title = isAIWin
-      ? (holidayConfig ? `AI ${currentTheme.name} Win!` : 'AI Wins!')
+      ? (holidayConfig ? `Bot ${currentTheme.name} Win!` : 'Bot Wins!')
       : (holidayConfig ? holidayConfig.lossTitle : 'Defeat')
     subtitle = isAIWin
-      ? (holidayConfig ? `The AI got a ${currentTheme.name.toLowerCase()} win!` : 'The AI proved unbeatable this time.')
+      ? (holidayConfig ? `The Bot got a ${currentTheme.name.toLowerCase()} win!` : 'The Bot proved unbeatable this time.')
       : (holidayConfig ? holidayConfig.lossSubtitle : 'Better luck next time!')
     Icon = Frown
     colorClass = 'text-rose-500'

@@ -133,7 +133,7 @@ export function useGameReactions(gameId, userId, profile, isAIGame = false) {
       const reaction = {
         emoji,
         senderId: 'ai',
-        senderName: 'AI',
+        senderName: 'Bot',
         timestamp: Date.now(),
         id: `ai-${Date.now()}`,
       }

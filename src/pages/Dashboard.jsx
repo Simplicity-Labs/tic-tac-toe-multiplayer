@@ -204,7 +204,7 @@ export default function Dashboard() {
                 {activeGame.status === 'waiting'
                   ? 'Waiting for an opponent to join your game'
                   : activeGame.is_ai_game
-                    ? `Playing against AI (${activeGame.ai_difficulty})`
+                    ? `Playing against Bot (${activeGame.ai_difficulty})`
                     : 'Game in progress with another player'}
               </p>
               <div className="flex gap-2">
@@ -301,7 +301,7 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-amber-500" />
               </div>
-              Play vs AI
+              Play vs Bot
             </CardTitle>
           </CardHeader>
           <CardContent>

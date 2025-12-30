@@ -25,7 +25,7 @@ export default function History() {
   }
 
   const getOpponent = (game) => {
-    if (game.is_ai_game) return { username: 'AI', isAI: true }
+    if (game.is_ai_game) return { username: 'Bot', isAI: true }
     if (game.player_x === user?.id) {
       return game.player_o_profile || { username: 'Unknown' }
     }
@@ -87,7 +87,7 @@ export default function History() {
             )}
           >
             <Bot className="h-3.5 w-3.5" />
-            AI
+            Bot
           </button>
         </div>
       </div>
@@ -108,12 +108,12 @@ export default function History() {
             <p className="text-slate-500">
               {filter === 'all' && 'No games played yet'}
               {filter === 'pvp' && 'No PvP games played yet'}
-              {filter === 'ai' && 'No AI games played yet'}
+              {filter === 'ai' && 'No Bot games played yet'}
             </p>
             <p className="text-sm text-slate-400">
               {filter === 'all' && 'Start a game to see your history here'}
               {filter === 'pvp' && 'Play against other players to see PvP history'}
-              {filter === 'ai' && 'Play against the AI to see AI history'}
+              {filter === 'ai' && 'Play against the Bot to see Bot history'}
             </p>
           </CardContent>
         </Card>

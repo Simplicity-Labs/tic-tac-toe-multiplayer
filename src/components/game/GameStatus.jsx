@@ -116,7 +116,7 @@ function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDiff
       </div>
       <div className="flex flex-col">
         <span className="font-semibold text-xs sm:text-sm">
-          {isAI ? 'AI' : player?.username || 'Waiting...'}
+          {isAI ? 'Bot' : player?.username || 'Waiting...'}
         </span>
         <span className="text-[10px] sm:text-xs text-slate-500">
           {isCurrentUser && '(You)'}
