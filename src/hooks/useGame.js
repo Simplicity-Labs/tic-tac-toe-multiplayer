@@ -284,21 +284,10 @@ export function useGame(gameId) {
 
     const difficulty = game.ai_difficulty || 'hard'
     const isGravityMode = game.game_mode === 'gravity'
-    const boardSize = getBoardSize(game.board)
 
-    let aiPosition
-
-    if (isGravityMode) {
-      // For gravity mode, AI picks a column and we find where it lands
-      // Get AI's preferred position, then apply gravity
-      const aiChoice = getAIMove(game.board, difficulty)
-      if (aiChoice === null) return
-      aiPosition = getGravityDropPosition(game.board, aiChoice, boardSize)
-      if (aiPosition === null) return
-    } else {
-      aiPosition = getAIMove(game.board, difficulty)
-      if (aiPosition === null) return
-    }
+    // getAIMove now handles gravity mode internally and returns the correct position
+    const aiPosition = getAIMove(game.board, difficulty, isGravityMode)
+    if (aiPosition === null) return
 
     let newBoard = [...game.board]
     newBoard[aiPosition] = 'O'

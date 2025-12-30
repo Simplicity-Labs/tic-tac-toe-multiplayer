@@ -128,12 +128,19 @@ export function getAvailableMoves(board) {
 }
 
 // Get max search depth based on board size
-function getMaxDepth(boardSize) {
+function getMaxDepth(boardSize, isGravityMode = false) {
+  if (isGravityMode) {
+    // Gravity mode has fewer branching factor (only 7 columns vs all cells)
+    switch (boardSize) {
+      case 7: return 6  // Connect 4 can go deeper since only 7 moves per turn
+      default: return 5
+    }
+  }
   switch (boardSize) {
     case 3: return 9  // Full search for 3x3
     case 4: return 6  // Limited for 4x4
     case 5: return 4  // More limited for 5x5
-    case 7: return 4  // Limited for 7x6 Connect 4
+    case 7: return 4  // Limited for 7x6 (non-gravity, unlikely)
     default: return 4
   }
 }
@@ -203,20 +210,84 @@ function minimax(board, depth, isMaximizing, alpha, beta, maxDepth, boardSize) {
   }
 }
 
+// Minimax for gravity mode - only considers column moves
+function minimaxGravity(board, depth, isMaximizing, alpha, beta, maxDepth, boardSize) {
+  const result = checkWinner(board)
+
+  if (result) {
+    return result.winner === 'O' ? 1000 - depth : depth - 1000
+  }
+
+  if (checkDraw(board)) {
+    return 0
+  }
+
+  if (depth >= maxDepth) {
+    return evaluatePosition(board, boardSize)
+  }
+
+  const availableCols = getAvailableColumns(board, boardSize)
+
+  if (isMaximizing) {
+    let maxEval = -Infinity
+    for (const col of availableCols) {
+      const pos = getColumnPreviewPosition(board, col, boardSize)
+      if (pos === null) continue
+      const newBoard = [...board]
+      newBoard[pos] = 'O'
+      const evalScore = minimaxGravity(newBoard, depth + 1, false, alpha, beta, maxDepth, boardSize)
+      maxEval = Math.max(maxEval, evalScore)
+      alpha = Math.max(alpha, evalScore)
+      if (beta <= alpha) break
+    }
+    return maxEval
+  } else {
+    let minEval = Infinity
+    for (const col of availableCols) {
+      const pos = getColumnPreviewPosition(board, col, boardSize)
+      if (pos === null) continue
+      const newBoard = [...board]
+      newBoard[pos] = 'X'
+      const evalScore = minimaxGravity(newBoard, depth + 1, true, alpha, beta, maxDepth, boardSize)
+      minEval = Math.min(minEval, evalScore)
+      beta = Math.min(beta, evalScore)
+      if (beta <= alpha) break
+    }
+    return minEval
+  }
+}
+
 // Get the best move for AI (O player)
-export function getBestMove(board) {
+export function getBestMove(board, isGravityMode = false) {
   const boardSize = getBoardSize(board)
-  const maxDepth = getMaxDepth(boardSize)
+  const maxDepth = getMaxDepth(boardSize, isGravityMode)
   let bestScore = -Infinity
   let bestMove = null
 
-  for (const move of getAvailableMoves(board)) {
-    const newBoard = [...board]
-    newBoard[move] = 'O'
-    const score = minimax(newBoard, 0, false, -Infinity, Infinity, maxDepth, boardSize)
-    if (score > bestScore) {
-      bestScore = score
-      bestMove = move
+  if (isGravityMode) {
+    // Gravity mode: only consider column moves
+    const availableCols = getAvailableColumns(board, boardSize)
+    for (const col of availableCols) {
+      const pos = getColumnPreviewPosition(board, col, boardSize)
+      if (pos === null) continue
+      const newBoard = [...board]
+      newBoard[pos] = 'O'
+      const score = minimaxGravity(newBoard, 0, false, -Infinity, Infinity, maxDepth, boardSize)
+      if (score > bestScore) {
+        bestScore = score
+        bestMove = pos
+      }
+    }
+  } else {
+    // Standard mode: consider all empty cells
+    for (const move of getAvailableMoves(board)) {
+      const newBoard = [...board]
+      newBoard[move] = 'O'
+      const score = minimax(newBoard, 0, false, -Infinity, Infinity, maxDepth, boardSize)
+      if (score > bestScore) {
+        bestScore = score
+        bestMove = move
+      }
     }
   }
 
@@ -224,17 +295,27 @@ export function getBestMove(board) {
 }
 
 // Get a random move (easy AI)
-export function getRandomMove(board) {
+export function getRandomMove(board, isGravityMode = false) {
+  const boardSize = getBoardSize(board)
+  if (isGravityMode) {
+    const availableCols = getAvailableColumns(board, boardSize)
+    const randomCol = availableCols[Math.floor(Math.random() * availableCols.length)]
+    return getColumnPreviewPosition(board, randomCol, boardSize)
+  }
   const available = getAvailableMoves(board)
   return available[Math.floor(Math.random() * available.length)]
 }
 
 // Medium AI - mix of smart and random moves
-export function getMediumMove(board) {
-  const available = getAvailableMoves(board)
+export function getMediumMove(board, isGravityMode = false) {
   const boardSize = getBoardSize(board)
   const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
   const { cols, rows } = config
+
+  // Get available moves based on mode
+  const available = isGravityMode
+    ? getAvailableColumns(board, boardSize).map(col => getColumnPreviewPosition(board, col, boardSize)).filter(p => p !== null)
+    : getAvailableMoves(board)
 
   // 60% chance to make a smart move, 40% random
   if (Math.random() < 0.6) {
@@ -252,21 +333,27 @@ export function getMediumMove(board) {
       if (checkWinner(testBoard)) return move
     }
 
-    // Take center if available (works for odd-sized boards)
-    // For rectangular boards, take the center column's middle row
-    const centerCol = Math.floor(cols / 2)
-    const centerRow = Math.floor(rows / 2)
-    const center = centerRow * cols + centerCol
-    if (isEmpty(board[center])) return center
+    // For gravity mode, prefer center column
+    if (isGravityMode) {
+      const centerCol = Math.floor(cols / 2)
+      const centerPos = getColumnPreviewPosition(board, centerCol, boardSize)
+      if (centerPos !== null) return centerPos
+    } else {
+      // Take center if available (works for odd-sized boards)
+      const centerCol = Math.floor(cols / 2)
+      const centerRow = Math.floor(rows / 2)
+      const center = centerRow * cols + centerCol
+      if (isEmpty(board[center])) return center
 
-    // Take a corner
-    const corners = getCorners(boardSize).filter(i => isEmpty(board[i]))
-    if (corners.length > 0) {
-      return corners[Math.floor(Math.random() * corners.length)]
+      // Take a corner
+      const corners = getCorners(boardSize).filter(i => isEmpty(board[i]))
+      if (corners.length > 0) {
+        return corners[Math.floor(Math.random() * corners.length)]
+      }
     }
   }
 
-  return getRandomMove(board)
+  return getRandomMove(board, isGravityMode)
 }
 
 // Get corner indices for a board (supports rectangular boards)
@@ -282,15 +369,15 @@ function getCorners(boardSize) {
 }
 
 // Get AI move based on difficulty
-export function getAIMove(board, difficulty = 'hard') {
+export function getAIMove(board, difficulty = 'hard', isGravityMode = false) {
   switch (difficulty) {
     case 'easy':
-      return getRandomMove(board)
+      return getRandomMove(board, isGravityMode)
     case 'medium':
-      return getMediumMove(board)
+      return getMediumMove(board, isGravityMode)
     case 'hard':
     default:
-      return getBestMove(board)
+      return getBestMove(board, isGravityMode)
   }
 }
 
