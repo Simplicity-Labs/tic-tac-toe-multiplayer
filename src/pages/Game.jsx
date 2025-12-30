@@ -392,8 +392,17 @@ export default function Game() {
           )}
           {isGameActive && isPlayer && (
             <Button variant="destructive" size="sm" onClick={() => setShowForfeitModal(true)}>
-              <Flag className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Forfeit</span>
+              {game.status === 'waiting' ? (
+                <>
+                  <X className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Cancel</span>
+                </>
+              ) : (
+                <>
+                  <Flag className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Forfeit</span>
+                </>
+              )}
             </Button>
           )}
         </div>
