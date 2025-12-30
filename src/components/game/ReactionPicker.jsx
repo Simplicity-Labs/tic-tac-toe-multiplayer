@@ -43,7 +43,7 @@ export function ReactionPicker({ onReact, disabled, canSend = true, cooldownRema
     <div ref={pickerRef} className="relative">
       {/* Emoji Grid Popup */}
       {isOpen && (
-        <div className="fixed bottom-20 left-4 animate-in fade-in slide-in-from-bottom-2 duration-200 z-40">
+        <div className="fixed bottom-20 left-4 animate-in fade-in slide-in-from-bottom-2 duration-200 z-[70]">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-3">
             <div className="grid grid-cols-5 gap-1.5">
               {REACTIONS.map((reaction) => (

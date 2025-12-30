@@ -375,36 +375,34 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Game status with reaction bubbles */}
-      <div className="relative">
-        <GameStatus
-          game={game}
-          playerX={playerX}
-          playerO={playerO}
-          currentUserId={user?.id}
-          timeRemaining={timeRemaining}
-          formattedTime={formattedTime}
-          isLow={isLow}
-          percentage={percentage}
-          timerEnabled={timerEnabled}
-        />
-        {/* Reaction bubbles from opponent/AI */}
-        <div className="absolute right-2 top-0">
-          <ReactionBubbleContainer
-            reactions={reactions}
-            position="right"
-            onReactionComplete={() => {}}
-          />
-        </div>
-        {/* Our sent reactions (visual feedback) */}
-        <div className="absolute left-2 top-0">
+      {/* Game status */}
+      <GameStatus
+        game={game}
+        playerX={playerX}
+        playerO={playerO}
+        currentUserId={user?.id}
+        timeRemaining={timeRemaining}
+        formattedTime={formattedTime}
+        isLow={isLow}
+        percentage={percentage}
+        timerEnabled={timerEnabled}
+      />
+
+      {/* Reaction bubbles - fixed position to show above overlay */}
+      {(reactions.length > 0 || sentReactions.length > 0) && (
+        <div className="fixed top-20 left-0 right-0 z-[60] pointer-events-none flex justify-between px-4 max-w-lg mx-auto">
+          {/* Our sent reactions (visual feedback) */}
           <ReactionBubbleContainer
             reactions={sentReactions}
-            position="left"
+            onReactionComplete={() => {}}
+          />
+          {/* Reaction bubbles from opponent/AI */}
+          <ReactionBubbleContainer
+            reactions={reactions}
             onReactionComplete={() => {}}
           />
         </div>
-      </div>
+      )}
 
       {/* Game board */}
       <Board
@@ -432,8 +430,8 @@ export default function Game() {
       )}
 
       {/* Floating reaction picker */}
-      {isPlayer && game?.status === 'in_progress' && (
-        <div className="fixed bottom-6 left-6 z-30">
+      {isPlayer && (game?.status === 'in_progress' || game?.status === 'completed') && (
+        <div className="fixed bottom-6 left-6 z-[60]">
           <ReactionPicker
             onReact={handleReaction}
             disabled={false}

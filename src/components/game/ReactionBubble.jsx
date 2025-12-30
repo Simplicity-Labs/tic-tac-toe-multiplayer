@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils'
 
 const BUBBLE_DURATION = 3000 // How long the bubble stays visible
 
-export function ReactionBubble({ reaction, position = 'left', onComplete }) {
+export function ReactionBubble({ reaction, onComplete }) {
   const [visible, setVisible] = useState(true)
   const [exiting, setExiting] = useState(false)
 
@@ -30,16 +30,10 @@ export function ReactionBubble({ reaction, position = 'left', onComplete }) {
   const isTextReaction = reaction.emoji === 'GG'
 
   return (
-    <div
-      className={cn(
-        'absolute z-20 pointer-events-none',
-        position === 'left' ? 'left-0' : 'right-0',
-        '-top-2 -translate-y-full'
-      )}
-    >
+    <div className="pointer-events-none">
       <div
         className={cn(
-          'px-3 py-2 rounded-xl shadow-lg',
+          'px-3 py-2 rounded-xl shadow-lg inline-block',
           'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700',
           'animate-in zoom-in-50 duration-200',
           exiting && 'animate-out fade-out zoom-out-50 duration-300'
@@ -66,7 +60,7 @@ export function ReactionBubble({ reaction, position = 'left', onComplete }) {
 }
 
 // Container for multiple reaction bubbles
-export function ReactionBubbleContainer({ reactions, position = 'left', onReactionComplete }) {
+export function ReactionBubbleContainer({ reactions, onReactionComplete }) {
   if (!reactions || reactions.length === 0) return null
 
   // Only show the most recent reaction
@@ -76,7 +70,6 @@ export function ReactionBubbleContainer({ reactions, position = 'left', onReacti
     <ReactionBubble
       key={latestReaction.id || latestReaction.timestamp}
       reaction={latestReaction}
-      position={position}
       onComplete={() => onReactionComplete?.(latestReaction)}
     />
   )
