@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield, Eye, EyeOff, User } from 'lucide-react'
+import { Settings as SettingsIcon, Check, Sparkles, X, Circle, Grid3X3, ArrowLeft, Calendar, Shield, Eye, EyeOff, User, Volume2, VolumeX } from 'lucide-react'
 import { useSettings, getAvailableThemes } from '../context/SettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader } from '../components/ui/Card'
@@ -34,6 +34,8 @@ export default function Settings() {
     boardSize,
     setBoardSize,
     boardSizeOptions,
+    soundEnabled,
+    setSoundEnabled,
   } = useSettings()
 
   // When previewing as user, hide admin-only features
@@ -198,6 +200,48 @@ export default function Settings() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Sound Effects Toggle */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-10 h-10 rounded-lg flex items-center justify-center",
+                soundEnabled ? "bg-primary-100 dark:bg-primary-900/30" : "bg-slate-100 dark:bg-slate-800"
+              )}>
+                {soundEnabled ? (
+                  <Volume2 className="h-5 w-5 text-primary-500" />
+                ) : (
+                  <VolumeX className="h-5 w-5 text-slate-400" />
+                )}
+              </div>
+              <div>
+                <p className="font-medium">Sound Effects</p>
+                <p className="text-sm text-slate-500">
+                  {soundEnabled
+                    ? 'Sounds play for moves and game events'
+                    : 'All game sounds are muted'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={cn(
+                'relative w-12 h-7 rounded-full transition-colors',
+                soundEnabled ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-600'
+              )}
+            >
+              <div
+                className={cn(
+                  'absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform',
+                  soundEnabled ? 'translate-x-6' : 'translate-x-1'
+                )}
+              />
+            </button>
+          </div>
         </CardContent>
       </Card>
 
@@ -411,16 +455,22 @@ export default function Settings() {
 }
 
 function MiniGridPreview({ size }) {
+  // Handle rectangular board for Connect 4 (7x6)
+  const cols = size === 7 ? 7 : size
+  const rows = size === 7 ? 6 : size
+  const cellCount = cols * rows
+
   return (
     <div
       className={cn(
         'grid gap-0.5 bg-slate-200 dark:bg-slate-700 rounded p-0.5',
         size === 3 && 'grid-cols-3 w-10 h-10',
         size === 4 && 'grid-cols-4 w-12 h-12',
-        size === 5 && 'grid-cols-5 w-14 h-14'
+        size === 5 && 'grid-cols-5 w-14 h-14',
+        size === 7 && 'grid-cols-7 w-16 h-14'
       )}
     >
-      {Array(size * size)
+      {Array(cellCount)
         .fill(null)
         .map((_, i) => (
           <div

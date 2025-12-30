@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../context/SettingsContext'
+import { useSound, SOUND_NAMES } from '../../hooks/useSound'
 
 export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode, index = 0 }) {
   const { currentTheme } = useSettings()
+  const { playSound } = useSound()
   const isClassic = currentTheme.id === 'classic'
 
   // Track when a piece is newly placed to trigger animation
@@ -12,12 +14,14 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   const prevValueRef = useRef(value)
 
   useEffect(() => {
-    // If value changed from null/undefined to X or O, trigger animation
+    // If value changed from null/undefined to X or O, trigger animation and sound
     if (!prevValueRef.current && value) {
       setAnimationKey(k => k + 1)
+      // Play appropriate sound for the game mode
+      playSound(isGravityMode ? SOUND_NAMES.DROP : SOUND_NAMES.PLACE)
     }
     prevValueRef.current = value
-  }, [value])
+  }, [value, isGravityMode, playSound])
 
   // Calculate row for gravity animation (how far to fall from top)
   const cols = boardSize === 7 ? 7 : boardSize

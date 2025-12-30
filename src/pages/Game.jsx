@@ -7,6 +7,7 @@ import { usePresence } from '../hooks/usePresence'
 import { useGame, useCreateGame } from '../hooks/useGame'
 import { useTimer } from '../hooks/useTimer'
 import { useGameReactions } from '../hooks/useGameReactions'
+import { useSound, SOUND_NAMES } from '../hooks/useSound'
 import { useToast } from '../components/ui/Toast'
 import { Button } from '../components/ui/Button'
 import { Board } from '../components/game/Board'
@@ -132,6 +133,18 @@ export default function Game() {
     },
     game?.turn_duration
   )
+
+  // Sound effects
+  const { playSound } = useSound()
+  const prevTimeRef = useRef(timeRemaining)
+
+  // Play warning beep when timer is low (every second)
+  useEffect(() => {
+    if (isLow && timerEnabled && timeRemaining !== prevTimeRef.current && timeRemaining <= 5) {
+      playSound(SOUND_NAMES.TIMER_WARNING)
+    }
+    prevTimeRef.current = timeRemaining
+  }, [isLow, timerEnabled, timeRemaining, playSound])
 
   // Handle AI move
   useEffect(() => {

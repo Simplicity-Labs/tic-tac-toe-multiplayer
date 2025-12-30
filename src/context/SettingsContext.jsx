@@ -253,6 +253,20 @@ export function SettingsProvider({ children }) {
     return 'human' // Default to human
   })
 
+  const [soundEnabled, setSoundEnabledState] = useState(() => {
+    const stored = getStoredSettings()
+    // Default to true if not set
+    return stored?.soundEnabled !== false
+  })
+
+  const [soundVolume, setSoundVolumeState] = useState(() => {
+    const stored = getStoredSettings()
+    if (typeof stored?.soundVolume === 'number') {
+      return Math.max(0, Math.min(1, stored.soundVolume))
+    }
+    return 0.5 // Default 50% volume
+  })
+
   const setAdminMode = (enabled) => {
     setAdminModeState(enabled)
     const stored = getStoredSettings() || {}
@@ -315,6 +329,19 @@ export function SettingsProvider({ children }) {
     }
   }
 
+  const setSoundEnabled = (enabled) => {
+    setSoundEnabledState(enabled)
+    const stored = getStoredSettings() || {}
+    storeSettings({ ...stored, soundEnabled: enabled })
+  }
+
+  const setSoundVolume = (volume) => {
+    const clampedVolume = Math.max(0, Math.min(1, volume))
+    setSoundVolumeState(clampedVolume)
+    const stored = getStoredSettings() || {}
+    storeSettings({ ...stored, soundVolume: clampedVolume })
+  }
+
   const currentTheme = SYMBOL_THEMES[symbolTheme] || SYMBOL_THEMES.classic
   const currentGameModeOption = GAME_MODE_OPTIONS.find(o => o.id === gameMode) || GAME_MODE_OPTIONS[0]
   const currentBoardSizeOption = BOARD_SIZE_OPTIONS.find(o => o.size === boardSize) || BOARD_SIZE_OPTIONS[0]
@@ -344,6 +371,10 @@ export function SettingsProvider({ children }) {
     gameModeOptions: GAME_MODE_OPTIONS,
     opponentType,
     setOpponentType,
+    soundEnabled,
+    setSoundEnabled,
+    soundVolume,
+    setSoundVolume,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
 import { useSettings } from '../../context/SettingsContext'
+import { useSound, SOUND_NAMES } from '../../hooks/useSound'
 
 const OVERLAY_DELAY_MS = 1200
 
@@ -105,6 +106,7 @@ const HOLIDAY_CONFIG = {
 export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO }) {
   const navigate = useNavigate()
   const { currentTheme, isHolidaySeason, currentHolidayTheme } = useSettings()
+  const { playSound } = useSound()
   const [visible, setVisible] = useState(false)
   const [viewingBoard, setViewingBoard] = useState(false)
 
@@ -123,7 +125,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
   const winnerIsX = game?.winner === game?.player_x
   const winnerName = winnerIsX ? playerX?.username : playerO?.username
 
-  // Delay showing the overlay and trigger confetti
+  // Delay showing the overlay and trigger confetti/sound
   useEffect(() => {
     if (!isCompleted) {
       setVisible(false)
@@ -132,6 +134,15 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
 
     const timer = setTimeout(() => {
       setVisible(true)
+
+      // Play appropriate sound
+      if (isDraw) {
+        playSound(SOUND_NAMES.DRAW)
+      } else if (isWinner) {
+        playSound(SOUND_NAMES.WIN)
+      } else if (isPlayer) {
+        playSound(SOUND_NAMES.LOSE)
+      }
 
       // Fire confetti on win (not draw or loss)
       if (isWinner || (isSpectator && !isDraw)) {
@@ -162,7 +173,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
     }, OVERLAY_DELAY_MS)
 
     return () => clearTimeout(timer)
-  }, [isCompleted, isWinner, isSpectator, isDraw, holidayConfig])
+  }, [isCompleted, isWinner, isDraw, isPlayer, isSpectator, holidayConfig, playSound])
 
   if (!isCompleted || !visible) return null
 
