@@ -1,6 +1,7 @@
 import { X, Circle, Bot } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Timer } from '../ui/Timer'
+import { useSettings } from '../../context/SettingsContext'
 
 export function GameStatus({
   game,
@@ -84,6 +85,10 @@ const DIFFICULTY_LABELS = {
 }
 
 function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDifficulty }) {
+  const { currentTheme } = useSettings()
+  const isClassic = currentTheme.id === 'classic'
+  const themeSymbol = symbol === 'X' ? currentTheme.x.symbol : currentTheme.o.symbol
+
   return (
     <div
       className={cn(
@@ -107,10 +112,14 @@ function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDiff
             ? 'bg-primary-500 text-white'
             : 'bg-rose-500 text-white'
         )}>
-          {symbol === 'X' ? (
-            <X className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={3} />
+          {isClassic ? (
+            symbol === 'X' ? (
+              <X className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={3} />
+            ) : (
+              <Circle className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
+            )
           ) : (
-            <Circle className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
+            <span className="text-xs sm:text-sm">{themeSymbol}</span>
           )}
         </div>
       </div>

@@ -246,8 +246,10 @@ export function SettingsProvider({ children }) {
   const setSymbolTheme = (themeId) => {
     if (SYMBOL_THEMES[themeId]) {
       setSymbolThemeState(themeId)
+      // Disable auto-enable when user explicitly selects a theme
+      setAutoEnableHolidayState(false)
       const stored = getStoredSettings() || {}
-      storeSettings({ ...stored, symbolTheme: themeId })
+      storeSettings({ ...stored, symbolTheme: themeId, autoEnableHoliday: false })
     }
   }
 

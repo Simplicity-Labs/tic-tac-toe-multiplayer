@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, Grid3X3, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGameHistory } from '../hooks/useGame'
+import { useSettings } from '../context/SettingsContext'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../lib/utils'
@@ -217,6 +218,13 @@ export default function History() {
 }
 
 function MiniBoard({ board, boardSize = 3 }) {
+  const { currentTheme } = useSettings()
+
+  const getSymbol = (cell) => {
+    if (!cell) return null
+    return cell === 'X' ? currentTheme.x.symbol : currentTheme.o.symbol
+  }
+
   return (
     <div
       className={cn(
@@ -239,7 +247,7 @@ function MiniBoard({ board, boardSize = 3 }) {
             boardSize === 5 && 'text-[5px]'
           )}
         >
-          {cell}
+          {getSymbol(cell)}
         </div>
       ))}
     </div>
