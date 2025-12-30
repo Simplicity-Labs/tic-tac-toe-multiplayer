@@ -5,6 +5,7 @@ const DEFAULT_TURN_DURATION = 30 // seconds
 // Timer duration options (in seconds)
 export const TIMER_OPTIONS = [
   { value: null, label: 'No Timer', shortLabel: 'Off' },
+  { value: 5, label: '5 seconds (Blitz)', shortLabel: '5s', isBlitz: true },
   { value: 10, label: '10 seconds', shortLabel: '10s' },
   { value: 30, label: '30 seconds', shortLabel: '30s' },
   { value: 60, label: '1 minute', shortLabel: '1m' },

@@ -348,7 +348,7 @@ export default function Dashboard() {
                       <Gamepad2 className="h-4 w-4 text-slate-500" />
                       <span className="text-sm font-medium">Game Mode</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {gameModeOptions.map((mode) => (
                         <button
                           key={mode.id}

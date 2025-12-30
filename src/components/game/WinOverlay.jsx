@@ -190,6 +190,7 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
     )
   }
 
+  const isMisereMode = game?.game_mode === 'misere'
   let title, subtitle, Icon, colorClass
 
   if (isDraw) {
@@ -205,14 +206,18 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
     title = `${winnerName || (winnerIsX ? 'X' : 'O')} Wins!`
     subtitle = holidayConfig
       ? `A ${currentTheme.name.toLowerCase()} victory for ${winnerIsX ? 'X' : 'O'}!`
-      : `${winnerIsX ? 'X' : 'O'} claimed victory in this match.`
+      : isMisereMode
+        ? `${winnerIsX ? 'O' : 'X'} made a line and lost! (Misère mode)`
+        : `${winnerIsX ? 'X' : 'O'} claimed victory in this match.`
     Icon = holidayConfig ? holidayConfig.WinIcon : Trophy
     colorClass = 'text-emerald-500'
   } else if (isWinner) {
     title = holidayConfig ? holidayConfig.winTitle : 'Victory!'
     subtitle = holidayConfig
       ? holidayConfig.winSubtitle
-      : 'Congratulations! You won the game!'
+      : isMisereMode
+        ? 'Your opponent made a line and lost!'
+        : 'Congratulations! You won the game!'
     Icon = holidayConfig ? holidayConfig.WinIcon : Trophy
     colorClass = 'text-emerald-500'
   } else {
@@ -220,8 +225,16 @@ export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO 
       ? (holidayConfig ? `Bot ${currentTheme.name} Win!` : 'Bot Wins!')
       : (holidayConfig ? holidayConfig.lossTitle : 'Defeat')
     subtitle = isAIWin
-      ? (holidayConfig ? `The Bot got a ${currentTheme.name.toLowerCase()} win!` : 'The Bot proved unbeatable this time.')
-      : (holidayConfig ? holidayConfig.lossSubtitle : 'Better luck next time!')
+      ? (holidayConfig
+          ? `The Bot got a ${currentTheme.name.toLowerCase()} win!`
+          : isMisereMode
+            ? 'You made a line and lost! (Misère mode)'
+            : 'The Bot proved unbeatable this time.')
+      : (holidayConfig
+          ? holidayConfig.lossSubtitle
+          : isMisereMode
+            ? 'You made a line and lost! (Misère mode)'
+            : 'Better luck next time!')
     Icon = Frown
     colorClass = 'text-rose-500'
   }

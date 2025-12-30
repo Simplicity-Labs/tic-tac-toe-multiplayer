@@ -7,6 +7,7 @@ import {
   getAIMove,
   createEmptyBoard,
   createEmptyPlacedAt,
+  createRandomStartBoard,
   isEmpty,
   applyDecay,
   DEFAULT_DECAY_TURNS,
@@ -185,7 +186,17 @@ export function useGame(gameId) {
 
       if (winResult) {
         updates.status = 'completed'
-        updates.winner = user.id
+        // In Misère mode, making a line means you LOSE
+        if (game.game_mode === 'misere') {
+          // The player who made the line loses - winner is the other player (or AI)
+          if (game.is_ai_game) {
+            updates.winner = 'ai' // Human made a line, AI wins
+          } else {
+            updates.winner = game.player_x === user.id ? game.player_o : game.player_x
+          }
+        } else {
+          updates.winner = user.id
+        }
         updates.completed_at = new Date().toISOString()
       } else if (isDraw) {
         updates.status = 'completed'
@@ -326,7 +337,12 @@ export function useGame(gameId) {
 
     if (winResult) {
       updates.status = 'completed'
-      updates.winner = 'ai'
+      // In Misère mode, making a line means you LOSE
+      if (game.game_mode === 'misere') {
+        updates.winner = game.player_x // AI made a line, human wins
+      } else {
+        updates.winner = 'ai'
+      }
       updates.completed_at = new Date().toISOString()
     } else if (isDraw) {
       updates.status = 'completed'
@@ -738,13 +754,19 @@ export function useCreateGame() {
       }
 
       const isDecayMode = gameMode === 'decay'
+      const isRandomStart = gameMode === 'random'
+
+      // Create initial board based on game mode
+      const initialBoard = isRandomStart
+        ? createRandomStartBoard(boardSize)
+        : createEmptyBoard(boardSize)
 
       const { data, error } = await supabase
         .from('games')
         .insert({
           player_x: user.id,
           player_o: isAI ? null : null,
-          board: createEmptyBoard(boardSize),
+          board: initialBoard,
           current_turn: user.id,
           status: isAI ? 'in_progress' : 'waiting',
           is_ai_game: isAI,

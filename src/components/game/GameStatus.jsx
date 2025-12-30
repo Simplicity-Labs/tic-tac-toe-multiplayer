@@ -20,18 +20,29 @@ export function GameStatus({
 
   const isDecayMode = game?.game_mode === 'decay'
   const isGravityMode = game?.game_mode === 'gravity'
+  const isMisereMode = game?.game_mode === 'misere'
+  const isRandomMode = game?.game_mode === 'random'
+
+  // Get game mode badge info
+  const getModeBadge = () => {
+    if (isMisereMode) return { icon: '🔄', text: 'MISÈRE', color: 'bg-rose-500' }
+    if (isDecayMode) return { icon: '⏳', text: 'DECAY', color: 'bg-amber-500' }
+    if (isGravityMode) return { icon: '⬇️', text: 'GRAVITY', color: 'bg-blue-500' }
+    if (isRandomMode) return { icon: '🎲', text: 'RANDOM START', color: 'bg-purple-500' }
+    return null
+  }
+
+  const modeBadge = getModeBadge()
 
   return (
     <div className="relative flex items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
       {/* Game mode badge */}
-      {isDecayMode && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full">
-          ⏳ DECAY MODE
-        </div>
-      )}
-      {isGravityMode && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">
-          ⬇️ GRAVITY MODE
+      {modeBadge && (
+        <div className={cn(
+          "absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 text-white text-[10px] font-bold rounded-full whitespace-nowrap",
+          modeBadge.color
+        )}>
+          {modeBadge.icon} {modeBadge.text}
         </div>
       )}
 

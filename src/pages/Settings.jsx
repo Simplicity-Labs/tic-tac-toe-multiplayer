@@ -324,9 +324,9 @@ export default function Settings() {
                       </>
                     ) : (
                       <>
-                        <span className="text-3xl">{theme.x.symbol}</span>
+                        <span className={cn("text-3xl", theme.x.color)}>{theme.x.symbol}</span>
                         <span className="text-slate-400 text-sm">vs</span>
-                        <span className="text-3xl">{theme.o.symbol}</span>
+                        <span className={cn("text-3xl", theme.o.color)}>{theme.o.symbol}</span>
                       </>
                     )}
                   </div>

@@ -37,8 +37,10 @@ export const BOARD_SIZE_OPTIONS = [
 // Game mode options
 export const GAME_MODE_OPTIONS = [
   { id: 'classic', name: 'Classic', description: 'Standard Tic Tac Toe', icon: '🎮' },
+  { id: 'misere', name: 'Misère', description: 'Get 3 in a row and LOSE', icon: '🔄' },
   { id: 'decay', name: 'Decay', description: 'Pieces fade after 4 turns', icon: '⏳' },
   { id: 'gravity', name: 'Gravity', description: 'Pieces fall to the bottom', icon: '⬇️' },
+  { id: 'random', name: 'Random Start', description: 'Board starts with pieces', icon: '🎲' },
 ]
 
 // Symbol theme definitions
@@ -239,7 +241,7 @@ export function SettingsProvider({ children }) {
 
   const [gameMode, setGameModeState] = useState(() => {
     const stored = getStoredSettings()
-    if (stored?.gameMode && ['classic', 'decay', 'gravity'].includes(stored.gameMode)) {
+    if (stored?.gameMode && ['classic', 'misere', 'decay', 'gravity', 'random'].includes(stored.gameMode)) {
       return stored.gameMode
     }
     return 'classic' // Default to classic
@@ -314,7 +316,7 @@ export function SettingsProvider({ children }) {
   }
 
   const setGameMode = (mode) => {
-    if (['classic', 'decay', 'gravity'].includes(mode)) {
+    if (['classic', 'misere', 'decay', 'gravity', 'random'].includes(mode)) {
       setGameModeState(mode)
       const stored = getStoredSettings() || {}
       storeSettings({ ...stored, gameMode: mode })

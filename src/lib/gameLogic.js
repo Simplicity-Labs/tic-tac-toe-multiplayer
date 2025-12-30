@@ -408,6 +408,12 @@ export const GAME_MODES = {
     description: 'Standard Tic Tac Toe',
     icon: '🎮',
   },
+  misere: {
+    id: 'misere',
+    name: 'Misère',
+    description: 'Get 3 in a row and LOSE',
+    icon: '🔄',
+  },
   decay: {
     id: 'decay',
     name: 'Decay',
@@ -419,6 +425,12 @@ export const GAME_MODES = {
     name: 'Gravity',
     description: 'Pieces fall to the bottom',
     icon: '⬇️',
+  },
+  random: {
+    id: 'random',
+    name: 'Random Start',
+    description: 'Board starts with pieces',
+    icon: '🎲',
   },
 }
 
@@ -554,3 +566,51 @@ export function getColumnPreviewPosition(board, col, boardSize) {
   }
   return null
 }
+
+// ============================================
+// RANDOM START MODE LOGIC
+// ============================================
+
+// Create a board with random starting pieces (for Random Start mode)
+// Places 1-2 pieces for each player, ensuring no winner yet
+export function createRandomStartBoard(boardSize = 3) {
+  const config = BOARD_SIZES[boardSize] || BOARD_SIZES[3]
+  const totalCells = config.cols * config.rows
+  const board = Array(totalCells).fill('')
+
+  // Determine number of pieces to place (1-2 per player for small boards, 2-3 for larger)
+  const piecesPerPlayer = boardSize >= 5 ? 2 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 2)
+
+  // Get available positions
+  const getAvailable = () => board.map((cell, i) => isEmpty(cell) ? i : -1).filter(i => i !== -1)
+
+  // Place pieces alternately (X first, then O)
+  for (let i = 0; i < piecesPerPlayer * 2; i++) {
+    const player = i % 2 === 0 ? 'X' : 'O'
+    const available = getAvailable()
+
+    if (available.length === 0) break
+
+    // Try to place without creating a winner
+    let placed = false
+    const shuffled = [...available].sort(() => Math.random() - 0.5)
+
+    for (const pos of shuffled) {
+      board[pos] = player
+      if (!checkWinner(board)) {
+        placed = true
+        break
+      }
+      // Would create winner, undo and try another position
+      board[pos] = ''
+    }
+
+    // If we couldn't place without winning, just skip this piece
+    if (!placed) break
+  }
+
+  return board
+}
+
+// Get the Blitz timer duration
+export const BLITZ_TIMER_DURATION = 5
