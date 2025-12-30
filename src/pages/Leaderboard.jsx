@@ -39,14 +39,16 @@ export default function Leaderboard() {
     return (
       <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
         <div className="flex items-center gap-2">
-          <Icon className={cn("h-4 w-4", iconColor)} />
+          <div className="w-6 shrink-0 flex items-center justify-start">
+            <Icon className={cn("h-4 w-4", iconColor)} />
+          </div>
           <span className="text-sm font-medium">{label}</span>
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-emerald-600 dark:text-emerald-400">{wins || 0}W</span>
-          <span className="text-rose-600 dark:text-rose-400">{losses || 0}L</span>
-          <span className="text-slate-500">{draws || 0}D</span>
-          <Badge variant={winRate >= 50 ? 'success' : 'secondary'} className="ml-2">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="w-8 text-right text-emerald-600 dark:text-emerald-400">{wins || 0}W</span>
+          <span className="w-8 text-right text-rose-600 dark:text-rose-400">{losses || 0}L</span>
+          <span className="w-8 text-right text-slate-500">{draws || 0}D</span>
+          <Badge variant={winRate >= 50 ? 'success' : 'secondary'} className="w-14 justify-center">
             {winRate}%
           </Badge>
         </div>
@@ -156,8 +158,8 @@ export default function Leaderboard() {
                   <div className="col-span-2 sm:col-span-1 flex items-center">
                     {getRankIcon(rank)}
                   </div>
-                  <div className="col-span-4 sm:col-span-5 flex items-center gap-2 sm:gap-3 min-w-0">
-                    <div className="h-8 w-8 flex items-center justify-center text-xl shrink-0">
+                  <div className="col-span-4 sm:col-span-5 flex items-center gap-1.5 sm:gap-3 min-w-0">
+                    <div className="h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center text-base sm:text-xl shrink-0">
                       {player.avatar || '😀'}
                     </div>
                     <span className={cn('font-medium truncate', isCurrentUser && 'text-primary-600 dark:text-primary-400')}>
@@ -194,7 +196,7 @@ export default function Leaderboard() {
 
       {/* Player Stats Modal */}
       {selectedPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedPlayer(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 !mt-0" onClick={() => setSelectedPlayer(null)}>
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">

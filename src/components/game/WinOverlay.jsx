@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
 import { useSettings } from '../../context/SettingsContext'
 
-const OVERLAY_DELAY_MS = 1500
+const OVERLAY_DELAY_MS = 1200
 
 // Holiday-specific configurations
 const HOLIDAY_CONFIG = {

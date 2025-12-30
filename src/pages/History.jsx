@@ -1,4 +1,5 @@
-import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, Grid3X3 } from 'lucide-react'
+import { useState } from 'react'
+import { History as HistoryIcon, Trophy, X as XIcon, Handshake, Bot, Grid3X3, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useGameHistory } from '../hooks/useGame'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
@@ -9,6 +10,13 @@ import { getBoardSize, BOARD_SIZES } from '../lib/gameLogic'
 export default function History() {
   const { user } = useAuth()
   const { games, loading } = useGameHistory()
+  const [filter, setFilter] = useState('all') // 'all', 'pvp', 'ai'
+
+  const filteredGames = games.filter((game) => {
+    if (filter === 'pvp') return !game.is_ai_game
+    if (filter === 'ai') return game.is_ai_game
+    return true
+  })
 
   const getOutcome = (game) => {
     if (game.winner === null) return 'draw'
@@ -17,7 +25,7 @@ export default function History() {
   }
 
   const getOpponent = (game) => {
-    if (game.is_ai_game) return { username: 'AI Bot', isAI: true }
+    if (game.is_ai_game) return { username: 'AI', isAI: true }
     if (game.player_x === user?.id) {
       return game.player_o_profile || { username: 'Unknown' }
     }
@@ -35,12 +43,53 @@ export default function History() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <HistoryIcon className="h-6 w-6 text-primary-500" />
-          Game History
-        </h1>
-        <p className="text-slate-500">Your recent games and outcomes</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <HistoryIcon className="h-6 w-6 text-primary-500" />
+            Game History
+          </h1>
+          <p className="text-slate-500">Your recent games and outcomes</p>
+        </div>
+
+        {/* Filter Toggle */}
+        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
+          <button
+            onClick={() => setFilter('all')}
+            className={cn(
+              'px-3 py-1.5 rounded text-sm font-medium transition-colors',
+              filter === 'all'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilter('pvp')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
+              filter === 'pvp'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+          >
+            <Users className="h-3.5 w-3.5" />
+            PvP
+          </button>
+          <button
+            onClick={() => setFilter('ai')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors',
+              filter === 'ai'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+            )}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            AI
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -52,17 +101,25 @@ export default function History() {
             />
           ))}
         </div>
-      ) : games.length === 0 ? (
+      ) : filteredGames.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <HistoryIcon className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-500">No games played yet</p>
-            <p className="text-sm text-slate-400">Start a game to see your history here</p>
+            <p className="text-slate-500">
+              {filter === 'all' && 'No games played yet'}
+              {filter === 'pvp' && 'No PvP games played yet'}
+              {filter === 'ai' && 'No AI games played yet'}
+            </p>
+            <p className="text-sm text-slate-400">
+              {filter === 'all' && 'Start a game to see your history here'}
+              {filter === 'pvp' && 'Play against other players to see PvP history'}
+              {filter === 'ai' && 'Play against the AI to see AI history'}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {games.map((game) => {
+          {filteredGames.map((game) => {
             const outcome = getOutcome(game)
             const opponent = getOpponent(game)
             const boardSize = game.board_size || getBoardSize(game.board)

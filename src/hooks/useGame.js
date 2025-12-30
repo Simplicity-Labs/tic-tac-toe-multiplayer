@@ -1028,6 +1028,31 @@ export function useLeaderboard(limit = 50, period = 'all-time') {
         }
       }
 
+      // Get all player IDs to fetch full profile data (includes AI stats)
+      const playerIds = Object.keys(playerStats)
+
+      if (playerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', playerIds)
+
+        // Merge profile data with calculated PvP stats
+        if (profiles) {
+          for (const profile of profiles) {
+            if (playerStats[profile.id]) {
+              playerStats[profile.id] = {
+                ...profile,
+                // Override with calculated PvP stats for the period
+                pvp_wins: playerStats[profile.id].pvp_wins,
+                pvp_losses: playerStats[profile.id].pvp_losses,
+                pvp_draws: playerStats[profile.id].pvp_draws,
+              }
+            }
+          }
+        }
+      }
+
       // Convert to array and sort by wins
       const sortedPlayers = Object.values(playerStats).sort(
         (a, b) => b.pvp_wins - a.pvp_wins

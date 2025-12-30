@@ -1,40 +1,104 @@
-import { Trophy, X as XIcon, Handshake, TrendingUp } from 'lucide-react'
+import { useState } from 'react'
+import { Trophy, X as XIcon, Handshake, TrendingUp, Users, Bot } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card'
 import { cn } from '../../lib/utils'
 
 export function StatsCard({ profile }) {
-  const wins = profile?.wins || 0
-  const losses = profile?.losses || 0
-  const draws = profile?.draws || 0
-  const total = wins + losses + draws
-  const winRate = total > 0 ? Math.round((wins / total) * 100) : 0
+  const [mode, setMode] = useState('all') // 'all', 'pvp', 'ai'
+
+  const getStats = () => {
+    if (mode === 'pvp') {
+      return {
+        wins: profile?.pvp_wins || 0,
+        losses: profile?.pvp_losses || 0,
+        draws: profile?.pvp_draws || 0,
+      }
+    }
+    if (mode === 'ai') {
+      const aiWins = (profile?.ai_easy_wins || 0) + (profile?.ai_medium_wins || 0) + (profile?.ai_hard_wins || 0)
+      const aiLosses = (profile?.ai_easy_losses || 0) + (profile?.ai_medium_losses || 0) + (profile?.ai_hard_losses || 0)
+      const aiDraws = (profile?.ai_easy_draws || 0) + (profile?.ai_medium_draws || 0) + (profile?.ai_hard_draws || 0)
+      return { wins: aiWins, losses: aiLosses, draws: aiDraws }
+    }
+    // All stats
+    return {
+      wins: profile?.wins || 0,
+      losses: profile?.losses || 0,
+      draws: profile?.draws || 0,
+    }
+  }
+
+  const stats = getStats()
+  const total = stats.wins + stats.losses + stats.draws
+  const winRate = total > 0 ? Math.round((stats.wins / total) * 100) : 0
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary-500" />
-          Your Stats
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary-500" />
+            Your Stats
+          </CardTitle>
+
+          {/* Mode Toggle */}
+          <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+            <button
+              onClick={() => setMode('all')}
+              className={cn(
+                'px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                mode === 'all'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              )}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setMode('pvp')}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                mode === 'pvp'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              )}
+            >
+              <Users className="h-3 w-3" />
+              <span className="hidden sm:inline">PvP</span>
+            </button>
+            <button
+              onClick={() => setMode('ai')}
+              className={cn(
+                'flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                mode === 'ai'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+              )}
+            >
+              <Bot className="h-3 w-3" />
+              <span className="hidden sm:inline">AI</span>
+            </button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-4 gap-4">
           <StatItem
             icon={Trophy}
             label="Wins"
-            value={wins}
+            value={stats.wins}
             colorClass="text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
           />
           <StatItem
             icon={XIcon}
             label="Losses"
-            value={losses}
+            value={stats.losses}
             colorClass="text-rose-500 bg-rose-50 dark:bg-rose-900/20"
           />
           <StatItem
             icon={Handshake}
             label="Draws"
-            value={draws}
+            value={stats.draws}
             colorClass="text-amber-500 bg-amber-50 dark:bg-amber-900/20"
           />
           <StatItem

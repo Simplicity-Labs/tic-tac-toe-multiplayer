@@ -191,7 +191,7 @@ export default function Login() {
                 <Grid3X3 className="h-10 w-10 text-white" />
               )}
             </div>
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl sm:text-3xl font-bold whitespace-nowrap">
               {holidayConfig ? holidayConfig.title : 'Tic Tac Toe'}
             </h1>
             <p className="text-slate-500 mt-2">
