@@ -18,8 +18,17 @@ export function GameStatus({
   const isPlayerX = game?.player_x === currentUserId
   const currentTurnIsX = game?.current_turn === game?.player_x
 
+  const isDecayMode = game?.game_mode === 'decay'
+
   return (
-    <div className="flex items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+    <div className="relative flex items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+      {/* Decay mode badge */}
+      {isDecayMode && (
+        <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full">
+          ⏳ DECAY MODE
+        </div>
+      )}
+
       {/* Player X */}
       <PlayerCard
         player={playerX}

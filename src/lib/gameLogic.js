@@ -292,3 +292,79 @@ export function formatTime(seconds) {
   const secs = seconds % 60
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+// ============================================
+// DECAY MODE LOGIC
+// ============================================
+
+// Game mode configurations
+export const GAME_MODES = {
+  classic: {
+    id: 'classic',
+    name: 'Classic',
+    description: 'Standard Tic Tac Toe',
+    icon: '🎮',
+  },
+  decay: {
+    id: 'decay',
+    name: 'Decay',
+    description: 'Pieces fade after 4 turns',
+    icon: '⏳',
+  },
+}
+
+// Default decay turns before a piece disappears
+export const DEFAULT_DECAY_TURNS = 4
+
+// Create empty placed_at array for tracking piece ages
+export function createEmptyPlacedAt(boardSize = 3) {
+  const size = boardSize * boardSize
+  return Array(size).fill(null)
+}
+
+// Apply decay to the board - removes pieces that have exceeded their lifespan
+export function applyDecay(board, placedAt, currentTurn, decayAfter = DEFAULT_DECAY_TURNS) {
+  if (!placedAt) return { board, placedAt }
+
+  const newBoard = [...board]
+  const newPlacedAt = [...placedAt]
+
+  for (let i = 0; i < board.length; i++) {
+    if (placedAt[i] !== null && currentTurn - placedAt[i] >= decayAfter) {
+      // Piece has decayed
+      newBoard[i] = ''
+      newPlacedAt[i] = null
+    }
+  }
+
+  return { board: newBoard, placedAt: newPlacedAt }
+}
+
+// Get turns remaining before a piece decays
+export function getTurnsRemaining(placedAt, index, currentTurn, decayAfter = DEFAULT_DECAY_TURNS) {
+  if (!placedAt || placedAt[index] === null) return null
+  const remaining = decayAfter - (currentTurn - placedAt[index])
+  return Math.max(0, remaining)
+}
+
+// Check if a piece is about to decay (1 turn remaining)
+export function isAboutToDecay(placedAt, index, currentTurn, decayAfter = DEFAULT_DECAY_TURNS) {
+  const remaining = getTurnsRemaining(placedAt, index, currentTurn, decayAfter)
+  return remaining === 1
+}
+
+// Get decay status for all cells (for UI rendering)
+export function getDecayStatus(board, placedAt, currentTurn, decayAfter = DEFAULT_DECAY_TURNS) {
+  if (!placedAt) return null
+
+  return board.map((cell, index) => {
+    if (!cell || placedAt[index] === null) return null
+
+    const turnsRemaining = getTurnsRemaining(placedAt, index, currentTurn, decayAfter)
+    return {
+      turnsRemaining,
+      isAboutToDecay: turnsRemaining === 1,
+      opacity: Math.min(1, (turnsRemaining / decayAfter) * 0.6 + 0.4), // 40% to 100% opacity
+    }
+  })
+}

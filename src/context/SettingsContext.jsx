@@ -33,6 +33,12 @@ export const BOARD_SIZE_OPTIONS = [
   { size: 5, label: '5x5', description: 'Large - 4 in a row to win' },
 ]
 
+// Game mode options
+export const GAME_MODE_OPTIONS = [
+  { id: 'classic', name: 'Classic', description: 'Standard Tic Tac Toe', icon: '🎮' },
+  { id: 'decay', name: 'Decay', description: 'Pieces fade after 4 turns', icon: '⏳' },
+]
+
 // Symbol theme definitions
 export const SYMBOL_THEMES = {
   classic: {
@@ -222,6 +228,14 @@ export function SettingsProvider({ children }) {
     return 30 // Default 30 seconds
   })
 
+  const [gameMode, setGameModeState] = useState(() => {
+    const stored = getStoredSettings()
+    if (stored?.gameMode && ['classic', 'decay'].includes(stored.gameMode)) {
+      return stored.gameMode
+    }
+    return 'classic' // Default to classic
+  })
+
   const setAdminMode = (enabled) => {
     setAdminModeState(enabled)
     const stored = getStoredSettings() || {}
@@ -268,7 +282,16 @@ export function SettingsProvider({ children }) {
     storeSettings({ ...stored, turnDuration: duration })
   }
 
+  const setGameMode = (mode) => {
+    if (['classic', 'decay'].includes(mode)) {
+      setGameModeState(mode)
+      const stored = getStoredSettings() || {}
+      storeSettings({ ...stored, gameMode: mode })
+    }
+  }
+
   const currentTheme = SYMBOL_THEMES[symbolTheme] || SYMBOL_THEMES.classic
+  const currentGameModeOption = GAME_MODE_OPTIONS.find(o => o.id === gameMode) || GAME_MODE_OPTIONS[0]
   const currentBoardSizeOption = BOARD_SIZE_OPTIONS.find(o => o.size === boardSize) || BOARD_SIZE_OPTIONS[0]
   const currentHolidayTheme = getCurrentHolidayThemeId() ? SYMBOL_THEMES[getCurrentHolidayThemeId()] : null
 
@@ -290,6 +313,10 @@ export function SettingsProvider({ children }) {
     boardSizeOptions: BOARD_SIZE_OPTIONS,
     turnDuration,
     setTurnDuration,
+    gameMode,
+    setGameMode,
+    currentGameModeOption,
+    gameModeOptions: GAME_MODE_OPTIONS,
   }
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

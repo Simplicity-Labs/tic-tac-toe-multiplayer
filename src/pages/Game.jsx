@@ -21,6 +21,7 @@ import {
   getAIReactionToPlayerEmoji,
   getAIReactionToGameEnd,
 } from '../lib/aiPersonality'
+import { getDecayStatus } from '../lib/gameLogic'
 
 export default function Game() {
   const { gameId } = useParams()
@@ -347,6 +348,12 @@ export default function Game() {
   const currentPlayer = getPlayerSymbol()
   const isDisabled = !isMyTurn() || game.status !== 'in_progress'
 
+  // Compute decay status for all cells (for decay mode visual indicators)
+  const isDecayMode = game?.game_mode === 'decay'
+  const decayStatusArray = isDecayMode
+    ? getDecayStatus(game.board, game.placed_at, game.turn_count || 0, game.decay_turns || 4)
+    : null
+
   return (
     <div className="max-w-lg mx-auto space-y-3 sm:space-y-6">
       {/* Header */}
@@ -412,6 +419,7 @@ export default function Game() {
         onCellClick={handleCellClick}
         disabled={isDisabled}
         currentPlayer={currentPlayer}
+        decayStatusArray={decayStatusArray}
       />
 
       {/* Game info */}

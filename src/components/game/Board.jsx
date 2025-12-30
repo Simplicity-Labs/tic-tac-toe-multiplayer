@@ -2,7 +2,7 @@ import { cn } from '../../lib/utils'
 import { Cell } from './Cell'
 import { checkWinner, isEmpty, getBoardSize } from '../../lib/gameLogic'
 
-export function Board({ board, onCellClick, disabled, currentPlayer }) {
+export function Board({ board, onCellClick, disabled, currentPlayer, decayStatusArray }) {
   // Guard against undefined/null board (e.g., when game is deleted)
   if (!board || !Array.isArray(board)) {
     return null
@@ -30,6 +30,7 @@ export function Board({ board, onCellClick, disabled, currentPlayer }) {
             isWinningCell={winResult?.line?.includes(index)}
             currentPlayer={currentPlayer}
             boardSize={boardSize}
+            decayStatus={decayStatusArray?.[index]}
           />
         ))}
       </div>

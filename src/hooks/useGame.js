@@ -6,7 +6,10 @@ import {
   checkDraw,
   getAIMove,
   createEmptyBoard,
+  createEmptyPlacedAt,
   isEmpty,
+  applyDecay,
+  DEFAULT_DECAY_TURNS,
 } from '../lib/gameLogic'
 
 const DEFAULT_TURN_DURATION = 30 // seconds
@@ -128,16 +131,42 @@ export function useGame(gameId) {
 
       // Determine the player's symbol
       const symbol = game.player_x === user.id ? 'X' : 'O'
-      const newBoard = [...game.board]
+      let newBoard = [...game.board]
       newBoard[position] = symbol
 
-      // Check for winner or draw
-      const winResult = checkWinner(newBoard)
-      const isDraw = checkDraw(newBoard)
+      // Handle decay mode - track when piece was placed
+      const isDecayMode = game.game_mode === 'decay'
+      let newPlacedAt = game.placed_at ? [...game.placed_at] : null
+      let newTurnCount = (game.turn_count || 0) + 1
+
+      if (isDecayMode && newPlacedAt) {
+        // Record when this piece was placed
+        newPlacedAt[position] = newTurnCount
+      }
+
+      // Check for winner BEFORE applying decay
+      let winResult = checkWinner(newBoard)
+      const isDraw = !winResult && checkDraw(newBoard)
+
+      // Apply decay AFTER checking for win (pieces decay after the move)
+      if (isDecayMode && newPlacedAt && !winResult && !isDraw) {
+        const decayResult = applyDecay(newBoard, newPlacedAt, newTurnCount, game.decay_turns || DEFAULT_DECAY_TURNS)
+        newBoard = decayResult.board
+        newPlacedAt = decayResult.placedAt
+
+        // Check again for draw after decay (board might have opened up or become empty)
+        // Note: We don't re-check for win after decay since pieces can only disappear, not appear
+      }
 
       let updates = {
         board: newBoard,
         turn_started_at: new Date().toISOString(),
+        turn_count: newTurnCount,
+      }
+
+      // Add decay mode fields
+      if (isDecayMode) {
+        updates.placed_at = newPlacedAt
       }
 
       if (winResult) {
@@ -243,15 +272,39 @@ export function useGame(gameId) {
     const aiPosition = getAIMove(game.board, difficulty)
     if (aiPosition === null) return
 
-    const newBoard = [...game.board]
+    let newBoard = [...game.board]
     newBoard[aiPosition] = 'O'
 
-    const winResult = checkWinner(newBoard)
-    const isDraw = checkDraw(newBoard)
+    // Handle decay mode - track when piece was placed
+    const isDecayMode = game.game_mode === 'decay'
+    let newPlacedAt = game.placed_at ? [...game.placed_at] : null
+    let newTurnCount = (game.turn_count || 0) + 1
+
+    if (isDecayMode && newPlacedAt) {
+      // Record when this piece was placed
+      newPlacedAt[aiPosition] = newTurnCount
+    }
+
+    // Check for winner BEFORE applying decay
+    let winResult = checkWinner(newBoard)
+    const isDraw = !winResult && checkDraw(newBoard)
+
+    // Apply decay AFTER checking for win
+    if (isDecayMode && newPlacedAt && !winResult && !isDraw) {
+      const decayResult = applyDecay(newBoard, newPlacedAt, newTurnCount, game.decay_turns || DEFAULT_DECAY_TURNS)
+      newBoard = decayResult.board
+      newPlacedAt = decayResult.placedAt
+    }
 
     let updates = {
       board: newBoard,
       turn_started_at: new Date().toISOString(),
+      turn_count: newTurnCount,
+    }
+
+    // Add decay mode fields
+    if (isDecayMode) {
+      updates.placed_at = newPlacedAt
     }
 
     if (winResult) {
@@ -655,7 +708,7 @@ export function useCreateGame() {
     return data
   }
 
-  const createGame = async (isAI = false, aiDifficulty = 'hard', boardSize = 3, turnDuration = DEFAULT_TURN_DURATION) => {
+  const createGame = async (isAI = false, aiDifficulty = 'hard', boardSize = 3, turnDuration = DEFAULT_TURN_DURATION, gameMode = 'classic') => {
     if (!user) return { error: 'Not authenticated' }
 
     setLoading(true)
@@ -666,6 +719,8 @@ export function useCreateGame() {
       if (existingGame) {
         return { error: 'You already have an active game', existingGameId: existingGame.id }
       }
+
+      const isDecayMode = gameMode === 'decay'
 
       const { data, error } = await supabase
         .from('games')
@@ -680,6 +735,10 @@ export function useCreateGame() {
           turn_started_at: new Date().toISOString(),
           board_size: boardSize,
           turn_duration: turnDuration,
+          game_mode: gameMode,
+          placed_at: isDecayMode ? createEmptyPlacedAt(boardSize) : null,
+          decay_turns: isDecayMode ? DEFAULT_DECAY_TURNS : null,
+          turn_count: 0,
         })
         .select()
         .single()
