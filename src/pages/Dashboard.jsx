@@ -58,7 +58,7 @@ export default function Dashboard() {
   const { activeGame, refetch: refetchActiveGame, forfeitGame, forfeitLoading } = useActiveGame()
   const { onlineUsers, isConnected } = usePresence()
   const { sendInvite, sentInvite } = useInvitations()
-  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize, turnDuration, setTurnDuration, gameMode, setGameMode, gameModeOptions, setSymbolTheme, opponentType, setOpponentType } = useSettings()
+  const { boardSize: selectedBoardSize, setBoardSize: setSelectedBoardSize, turnDuration, setTurnDuration, gameMode, setGameMode, gameModeOptions, opponentType, setOpponentType } = useSettings()
   const { toast } = useToast()
   const [selectedDifficulty, setSelectedDifficulty] = useState('hard')
 
@@ -292,10 +292,9 @@ export default function Dashboard() {
                           key={size}
                           onClick={() => {
                             setSelectedBoardSize(size)
-                            // Auto-enable gravity and Connect 4 theme for Connect 4 board
+                            // Auto-enable gravity mode for Connect 4 board
                             if (size === 7) {
                               setGameMode('gravity')
-                              setSymbolTheme('connect4')
                             }
                           }}
                           title={BOARD_SIZES[size].description}

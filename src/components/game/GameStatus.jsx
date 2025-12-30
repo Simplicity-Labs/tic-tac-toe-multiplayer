@@ -1,7 +1,7 @@
 import { X, Circle, Bot } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Timer } from '../ui/Timer'
-import { useSettings } from '../../context/SettingsContext'
+import { useSettings, SYMBOL_THEMES } from '../../context/SettingsContext'
 
 export function GameStatus({
   game,
@@ -13,6 +13,7 @@ export function GameStatus({
   isLow,
   percentage,
   timerEnabled = true,
+  boardSize = 3,
 }) {
   const isMyTurn = game?.current_turn === currentUserId
   const isPlayerX = game?.player_x === currentUserId
@@ -53,6 +54,7 @@ export function GameStatus({
         isCurrentTurn={currentTurnIsX}
         isCurrentUser={isPlayerX}
         isAI={false}
+        boardSize={boardSize}
       />
 
       {/* Timer / Status */}
@@ -99,6 +101,7 @@ export function GameStatus({
         isCurrentUser={!isPlayerX}
         isAI={game?.is_ai_game}
         aiDifficulty={game?.ai_difficulty}
+        boardSize={boardSize}
       />
     </div>
   )
@@ -110,10 +113,12 @@ const DIFFICULTY_LABELS = {
   hard: 'Unbeatable',
 }
 
-function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDifficulty }) {
+function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDifficulty, boardSize = 3 }) {
   const { currentTheme } = useSettings()
-  const isClassic = currentTheme.id === 'classic'
-  const themeSymbol = symbol === 'X' ? currentTheme.x.symbol : currentTheme.o.symbol
+  // Use Connect 4 theme automatically for 7x6 board
+  const effectiveTheme = boardSize === 7 ? SYMBOL_THEMES.connect4 : currentTheme
+  const isClassic = effectiveTheme.id === 'classic'
+  const themeSymbol = symbol === 'X' ? effectiveTheme.x.symbol : effectiveTheme.o.symbol
 
   return (
     <div

@@ -410,6 +410,7 @@ export default function Game() {
         isLow={isLow}
         percentage={percentage}
         timerEnabled={timerEnabled}
+        boardSize={game?.board_size || 3}
       />
 
       {/* Reaction bubbles - fixed position to show above overlay */}

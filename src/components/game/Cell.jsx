@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { useSettings } from '../../context/SettingsContext'
+import { useSettings, SYMBOL_THEMES } from '../../context/SettingsContext'
 import { useSound, SOUND_NAMES } from '../../hooks/useSound'
 
 export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode, index = 0 }) {
   const { currentTheme } = useSettings()
   const { playSound } = useSound()
-  const isClassic = currentTheme.id === 'classic'
+
+  // Use Connect 4 theme automatically for 7x6 board, otherwise use user's selected theme
+  const effectiveTheme = boardSize === 7 ? SYMBOL_THEMES.connect4 : currentTheme
+  const isClassic = effectiveTheme.id === 'classic'
 
   // Track when a piece is newly placed to trigger animation
   const [animationKey, setAnimationKey] = useState(0)
@@ -49,7 +52,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   }
 
   const renderSymbol = (player, isPreview = false) => {
-    const config = player === 'X' ? currentTheme.x : currentTheme.o
+    const config = player === 'X' ? effectiveTheme.x : effectiveTheme.o
     const sizes = getSizeClasses(isPreview)
 
     if (isClassic) {
