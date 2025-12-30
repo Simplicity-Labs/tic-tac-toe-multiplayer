@@ -311,6 +311,12 @@ export const GAME_MODES = {
     description: 'Pieces fade after 4 turns',
     icon: '⏳',
   },
+  gravity: {
+    id: 'gravity',
+    name: 'Gravity',
+    description: 'Pieces fall to the bottom',
+    icon: '⬇️',
+  },
 }
 
 // Default decay turns before a piece disappears
@@ -367,4 +373,68 @@ export function getDecayStatus(board, placedAt, currentTurn, decayAfter = DEFAUL
       opacity: Math.min(1, (turnsRemaining / decayAfter) * 0.6 + 0.4), // 40% to 100% opacity
     }
   })
+}
+
+// ============================================
+// GRAVITY MODE LOGIC
+// ============================================
+
+// Get the column index from a board position
+export function getColumn(position, boardSize) {
+  return position % boardSize
+}
+
+// Get the row index from a board position
+export function getRow(position, boardSize) {
+  return Math.floor(position / boardSize)
+}
+
+// Get the board position from row and column
+export function getPosition(row, col, boardSize) {
+  return row * boardSize + col
+}
+
+// Find the lowest empty cell in a column (gravity drop position)
+export function getGravityDropPosition(board, clickedPosition, boardSize) {
+  const col = getColumn(clickedPosition, boardSize)
+
+  // Start from the bottom row and work up to find the lowest empty cell
+  for (let row = boardSize - 1; row >= 0; row--) {
+    const pos = getPosition(row, col, boardSize)
+    if (isEmpty(board[pos])) {
+      return pos
+    }
+  }
+
+  // Column is full
+  return null
+}
+
+// Check if a column is full (for gravity mode)
+export function isColumnFull(board, col, boardSize) {
+  // Check the top cell of the column
+  const topPos = getPosition(0, col, boardSize)
+  return !isEmpty(board[topPos])
+}
+
+// Get all columns that are not full (valid moves in gravity mode)
+export function getAvailableColumns(board, boardSize) {
+  const columns = []
+  for (let col = 0; col < boardSize; col++) {
+    if (!isColumnFull(board, col, boardSize)) {
+      columns.push(col)
+    }
+  }
+  return columns
+}
+
+// Get the preview position for a column (where piece would land)
+export function getColumnPreviewPosition(board, col, boardSize) {
+  for (let row = boardSize - 1; row >= 0; row--) {
+    const pos = getPosition(row, col, boardSize)
+    if (isEmpty(board[pos])) {
+      return pos
+    }
+  }
+  return null
 }

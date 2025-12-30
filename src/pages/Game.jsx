@@ -350,6 +350,7 @@ export default function Game() {
 
   // Compute decay status for all cells (for decay mode visual indicators)
   const isDecayMode = game?.game_mode === 'decay'
+  const isGravityMode = game?.game_mode === 'gravity'
   const decayStatusArray = isDecayMode
     ? getDecayStatus(game.board, game.placed_at, game.turn_count || 0, game.decay_turns || 4)
     : null
@@ -420,6 +421,7 @@ export default function Game() {
         disabled={isDisabled}
         currentPlayer={currentPlayer}
         decayStatusArray={decayStatusArray}
+        isGravityMode={isGravityMode}
       />
 
       {/* Game info */}

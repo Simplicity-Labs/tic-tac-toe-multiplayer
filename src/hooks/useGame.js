@@ -10,6 +10,8 @@ import {
   isEmpty,
   applyDecay,
   DEFAULT_DECAY_TURNS,
+  getGravityDropPosition,
+  getBoardSize,
 } from '../lib/gameLogic'
 
 const DEFAULT_TURN_DURATION = 30 // seconds
@@ -124,15 +126,27 @@ export function useGame(gameId) {
         return { error: "It's not your turn" }
       }
 
-      // Validate position is empty
-      if (!isEmpty(game.board[position])) {
-        return { error: 'Position already taken' }
+      // Handle gravity mode - find where piece actually lands
+      const isGravityMode = game.game_mode === 'gravity'
+      let actualPosition = position
+
+      if (isGravityMode) {
+        const boardSize = getBoardSize(game.board)
+        actualPosition = getGravityDropPosition(game.board, position, boardSize)
+        if (actualPosition === null) {
+          return { error: 'Column is full' }
+        }
+      } else {
+        // Validate position is empty (non-gravity mode)
+        if (!isEmpty(game.board[position])) {
+          return { error: 'Position already taken' }
+        }
       }
 
       // Determine the player's symbol
       const symbol = game.player_x === user.id ? 'X' : 'O'
       let newBoard = [...game.board]
-      newBoard[position] = symbol
+      newBoard[actualPosition] = symbol
 
       // Handle decay mode - track when piece was placed
       const isDecayMode = game.game_mode === 'decay'
@@ -141,7 +155,7 @@ export function useGame(gameId) {
 
       if (isDecayMode && newPlacedAt) {
         // Record when this piece was placed
-        newPlacedAt[position] = newTurnCount
+        newPlacedAt[actualPosition] = newTurnCount
       }
 
       // Check for winner BEFORE applying decay
@@ -269,8 +283,22 @@ export function useGame(gameId) {
     if (!game || game.status !== 'in_progress') return
 
     const difficulty = game.ai_difficulty || 'hard'
-    const aiPosition = getAIMove(game.board, difficulty)
-    if (aiPosition === null) return
+    const isGravityMode = game.game_mode === 'gravity'
+    const boardSize = getBoardSize(game.board)
+
+    let aiPosition
+
+    if (isGravityMode) {
+      // For gravity mode, AI picks a column and we find where it lands
+      // Get AI's preferred position, then apply gravity
+      const aiChoice = getAIMove(game.board, difficulty)
+      if (aiChoice === null) return
+      aiPosition = getGravityDropPosition(game.board, aiChoice, boardSize)
+      if (aiPosition === null) return
+    } else {
+      aiPosition = getAIMove(game.board, difficulty)
+      if (aiPosition === null) return
+    }
 
     let newBoard = [...game.board]
     newBoard[aiPosition] = 'O'

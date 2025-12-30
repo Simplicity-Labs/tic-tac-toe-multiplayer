@@ -19,13 +19,19 @@ export function GameStatus({
   const currentTurnIsX = game?.current_turn === game?.player_x
 
   const isDecayMode = game?.game_mode === 'decay'
+  const isGravityMode = game?.game_mode === 'gravity'
 
   return (
     <div className="relative flex items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-      {/* Decay mode badge */}
+      {/* Game mode badge */}
       {isDecayMode && (
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full">
           ⏳ DECAY MODE
+        </div>
+      )}
+      {isGravityMode && (
+        <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">
+          ⬇️ GRAVITY MODE
         </div>
       )}
 

@@ -2,7 +2,7 @@ import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../context/SettingsContext'
 
-export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus }) {
+export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode }) {
   const { currentTheme } = useSettings()
   const isClassic = currentTheme.id === 'classic'
 
@@ -70,17 +70,27 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer, b
     )
   }
 
+  // In gravity mode, show preview only on the landing cell
+  const showHoverPreview = isGravityMode
+    ? isGravityPreview && !value
+    : !value && !disabled
+
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
+      onMouseEnter={onHover}
+      disabled={disabled && !isGravityMode}
       className={cn(
         'aspect-square w-full flex items-center justify-center relative group',
         'bg-white dark:bg-slate-900 rounded-xl',
         'transition-all duration-200',
         'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-        !disabled && !value && 'hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer',
-        disabled && !value && 'cursor-not-allowed',
+        // Normal hover for non-gravity mode
+        !isGravityMode && !disabled && !value && 'hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer',
+        // Gravity mode - all cells in column are clickable
+        isGravityMode && !disabled && 'cursor-pointer',
+        isGravityMode && isGravityPreview && !value && 'bg-slate-50 dark:bg-slate-800',
+        disabled && !value && !isGravityMode && 'cursor-not-allowed',
         isWinningCell && 'bg-primary-50 dark:bg-primary-900/30 ring-2 ring-primary-500',
         isAboutToDecay && !isWinningCell && 'animate-pulse ring-2 ring-amber-400'
       )}
@@ -105,9 +115,12 @@ export function Cell({ value, onClick, disabled, isWinningCell, currentPlayer, b
         </span>
       )}
 
-      {/* Hover preview for empty cells */}
-      {!value && !disabled && (
-        <span className="absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Hover preview - gravity mode shows on landing cell, classic shows on hovered cell */}
+      {showHoverPreview && (
+        <span className={cn(
+          "absolute inset-0 flex items-center justify-center text-slate-300 dark:text-slate-600 transition-opacity",
+          isGravityMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
           {renderSymbol(currentPlayer, true)}
         </span>
       )}

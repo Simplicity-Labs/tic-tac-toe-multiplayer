@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { cn } from '../../lib/utils'
 import { Cell } from './Cell'
-import { checkWinner, isEmpty, getBoardSize } from '../../lib/gameLogic'
+import { checkWinner, isEmpty, getBoardSize, getColumn, getColumnPreviewPosition } from '../../lib/gameLogic'
 
-export function Board({ board, onCellClick, disabled, currentPlayer, decayStatusArray }) {
+export function Board({ board, onCellClick, disabled, currentPlayer, decayStatusArray, isGravityMode }) {
+  const [hoveredColumn, setHoveredColumn] = useState(null)
+
   // Guard against undefined/null board (e.g., when game is deleted)
   if (!board || !Array.isArray(board)) {
     return null
@@ -10,6 +13,21 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
 
   const boardSize = getBoardSize(board)
   const winResult = checkWinner(board)
+
+  // Calculate preview position for gravity mode
+  const gravityPreviewPosition = isGravityMode && hoveredColumn !== null && !disabled
+    ? getColumnPreviewPosition(board, hoveredColumn, boardSize)
+    : null
+
+  const handleCellHover = (index) => {
+    if (isGravityMode && !disabled) {
+      setHoveredColumn(getColumn(index, boardSize))
+    }
+  }
+
+  const handleBoardLeave = () => {
+    setHoveredColumn(null)
+  }
 
   return (
     <div className="relative">
@@ -20,17 +38,21 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
           boardSize === 4 && 'grid-cols-4',
           boardSize === 5 && 'grid-cols-5'
         )}
+        onMouseLeave={handleBoardLeave}
       >
         {board.map((cell, index) => (
           <Cell
             key={index}
             value={cell}
             onClick={() => onCellClick(index)}
-            disabled={disabled || !isEmpty(cell)}
+            onHover={() => handleCellHover(index)}
+            disabled={disabled || (!isGravityMode && !isEmpty(cell))}
             isWinningCell={winResult?.line?.includes(index)}
             currentPlayer={currentPlayer}
             boardSize={boardSize}
             decayStatus={decayStatusArray?.[index]}
+            isGravityPreview={gravityPreviewPosition === index}
+            isGravityMode={isGravityMode}
           />
         ))}
       </div>
