@@ -34,7 +34,7 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
     <div className="relative">
       <div
         className={cn(
-          'grid gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl',
+          'grid gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-visible',
           cols === 3 && 'grid-cols-3',
           cols === 4 && 'grid-cols-4',
           cols === 5 && 'grid-cols-5',

@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { X, Circle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useSettings } from '../../context/SettingsContext'
@@ -5,6 +6,18 @@ import { useSettings } from '../../context/SettingsContext'
 export function Cell({ value, onClick, onHover, disabled, isWinningCell, currentPlayer, boardSize = 3, decayStatus, isGravityPreview, isGravityMode }) {
   const { currentTheme } = useSettings()
   const isClassic = currentTheme.id === 'classic'
+
+  // Track when a piece is newly placed to trigger animation
+  const [animationKey, setAnimationKey] = useState(0)
+  const prevValueRef = useRef(value)
+
+  useEffect(() => {
+    // If value changed from null/undefined to X or O, trigger animation
+    if (!prevValueRef.current && value) {
+      setAnimationKey(k => k + 1)
+    }
+    prevValueRef.current = value
+  }, [value])
 
   // Decay mode visual properties
   const hasDecay = decayStatus && decayStatus.turnsRemaining !== null
@@ -30,7 +43,6 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
   const renderSymbol = (player, isPreview = false) => {
     const config = player === 'X' ? currentTheme.x : currentTheme.o
     const sizes = getSizeClasses(isPreview)
-    const animationClass = isGravityMode ? 'cell-fall' : 'cell-enter'
 
     if (isClassic) {
       // Use lucide icons for classic theme
@@ -39,7 +51,6 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
           <X
             className={cn(
               sizes.x,
-              isPreview ? '' : animationClass,
               isPreview ? '' : isWinningCell ? config.winColor : config.color
             )}
             strokeWidth={isPreview ? 2 : 3}
@@ -50,7 +61,6 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
         <Circle
           className={cn(
             sizes.o,
-            isPreview ? '' : animationClass,
             isPreview ? '' : isWinningCell ? config.winColor : config.color
           )}
           strokeWidth={isPreview ? 2 : 3}
@@ -64,7 +74,6 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
         <span
           className={cn(
             sizes.emoji,
-            !isPreview && animationClass,
             isPreview ? 'opacity-40' : '',
             isPreview ? config.color : isWinningCell ? config.winColor : config.color
           )}
@@ -77,12 +86,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
 
     // Emoji themes
     return (
-      <span
-        className={cn(
-          sizes.emoji,
-          !isPreview && animationClass
-        )}
-      >
+      <span className={sizes.emoji}>
         {config.symbol}
       </span>
     )
@@ -100,7 +104,7 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
       disabled={disabled && !isGravityMode}
       className={cn(
         'aspect-square w-full flex items-center justify-center relative group',
-        'bg-white dark:bg-slate-900 rounded-xl',
+        'bg-white dark:bg-slate-900 rounded-xl overflow-visible',
         'transition-all duration-200',
         'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
         // Normal hover for non-gravity mode
@@ -114,10 +118,18 @@ export function Cell({ value, onClick, onHover, disabled, isWinningCell, current
       )}
     >
       {/* Main symbol with decay opacity */}
-      <div style={{ opacity: decayOpacity }} className="transition-opacity duration-300">
-        {value === 'X' && renderSymbol('X')}
-        {value === 'O' && renderSymbol('O')}
-      </div>
+      {value && (
+        <div
+          key={`${value}-${animationKey}`}
+          style={{ opacity: decayOpacity }}
+          className={cn(
+            "transition-opacity duration-300",
+            isGravityMode ? "cell-fall" : "cell-enter"
+          )}
+        >
+          {renderSymbol(value)}
+        </div>
+      )}
 
       {/* Decay turns remaining indicator */}
       {hasDecay && value && (
