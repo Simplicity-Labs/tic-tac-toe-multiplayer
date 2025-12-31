@@ -17,7 +17,7 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
 
   // Calculate preview position for gravity mode
   const gravityPreviewPosition = isGravityMode && hoveredColumn !== null && !disabled
-    ? getColumnPreviewPosition(board, hoveredColumn, boardSize)
+    ? getColumnPreviewPosition(board, hoveredColumn, boardSize, bombedCells)
     : null
 
   // Calculate visible cells for fog of war mode

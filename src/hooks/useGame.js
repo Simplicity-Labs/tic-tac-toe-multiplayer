@@ -143,7 +143,8 @@ export function useGame(gameId) {
 
       if (isGravityMode) {
         const boardSize = getBoardSize(game.board)
-        actualPosition = getGravityDropPosition(game.board, position, boardSize)
+        const bombedCells = isBombMode ? (game.bombed_cells || []) : []
+        actualPosition = getGravityDropPosition(game.board, position, boardSize, bombedCells)
         if (actualPosition === null) {
           return { error: 'Column is full' }
         }

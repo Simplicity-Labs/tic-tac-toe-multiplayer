@@ -520,14 +520,16 @@ export function getPosition(row, col, boardSize) {
 }
 
 // Find the lowest empty cell in a column (gravity drop position)
-export function getGravityDropPosition(board, clickedPosition, boardSize) {
+// Treats bombed cells as filled - pieces stack on top of bombs
+export function getGravityDropPosition(board, clickedPosition, boardSize, bombedCells = []) {
   const { cols, rows } = getBoardDimensions(boardSize)
   const col = getColumn(clickedPosition, boardSize)
 
   // Start from the bottom row and work up to find the lowest empty cell
+  // Skip bombed cells (treat them as filled)
   for (let row = rows - 1; row >= 0; row--) {
     const pos = getPosition(row, col, boardSize)
-    if (isEmpty(board[pos])) {
+    if (isEmpty(board[pos]) && !bombedCells.includes(pos)) {
       return pos
     }
   }
@@ -556,11 +558,12 @@ export function getAvailableColumns(board, boardSize) {
 }
 
 // Get the preview position for a column (where piece would land)
-export function getColumnPreviewPosition(board, col, boardSize) {
+// Treats bombed cells as filled - pieces stack on top of bombs
+export function getColumnPreviewPosition(board, col, boardSize, bombedCells = []) {
   const { rows } = getBoardDimensions(boardSize)
   for (let row = rows - 1; row >= 0; row--) {
     const pos = getPosition(row, col, boardSize)
-    if (isEmpty(board[pos])) {
+    if (isEmpty(board[pos]) && !bombedCells.includes(pos)) {
       return pos
     }
   }
@@ -721,15 +724,14 @@ export function getAdjacentCells(position, boardSize) {
 }
 
 // Get all cells visible to a player in fog of war mode
+// Only the player's own pieces are visible - no adjacent cells revealed
 export function getVisibleCells(board, playerSymbol, boardSize) {
   const visible = new Set()
 
   board.forEach((cell, index) => {
     if (cell === playerSymbol) {
-      // Player's own piece is visible
+      // Only player's own pieces are visible
       visible.add(index)
-      // Adjacent cells are visible
-      getAdjacentCells(index, boardSize).forEach(adj => visible.add(adj))
     }
   })
 

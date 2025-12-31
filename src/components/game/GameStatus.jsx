@@ -14,6 +14,7 @@ export function GameStatus({
   percentage,
   timerEnabled = true,
   boardSize = 3,
+  layout = 'horizontal', // 'horizontal' | 'sidebar-left' | 'sidebar-right'
 }) {
   const isMyTurn = game?.current_turn === currentUserId
   const isPlayerX = game?.player_x === currentUserId
@@ -41,6 +42,89 @@ export function GameStatus({
 
   const modeBadge = getModeBadge()
 
+  // Sidebar layout for desktop - shows only one player + timer
+  if (layout === 'sidebar-left') {
+    return (
+      <div className="flex flex-col items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        {/* Game mode badge */}
+        {modeBadge && (
+          <div className={cn(
+            "px-3 py-1 text-white text-xs font-bold rounded-full whitespace-nowrap",
+            modeBadge.color
+          )}>
+            {modeBadge.icon} {modeBadge.text}
+          </div>
+        )}
+
+        {/* Player X */}
+        <PlayerCard
+          player={playerX}
+          symbol="X"
+          isCurrentTurn={currentTurnIsX}
+          isCurrentUser={isPlayerX}
+          isAI={false}
+          boardSize={boardSize}
+          vertical
+        />
+
+        {/* Timer / Status */}
+        <div className="flex flex-col items-center">
+          {game?.status === 'in_progress' && (
+            <>
+              {timerEnabled ? (
+                <Timer
+                  timeRemaining={timeRemaining}
+                  formattedTime={formattedTime}
+                  isLow={isLow}
+                  percentage={percentage}
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <span className="text-xs text-slate-500 font-medium">No Timer</span>
+                </div>
+              )}
+              <p className={cn(
+                'mt-2 text-sm font-medium',
+                isMyTurn ? 'text-primary-500' : 'text-slate-500'
+              )}>
+                {isMyTurn ? "Your turn" : "Waiting..."}
+              </p>
+            </>
+          )}
+          {game?.status === 'waiting' && (
+            <div className="text-center">
+              <div className="animate-pulse flex space-x-1 justify-center mb-2">
+                <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-primary-500 rounded-full animation-delay-200"></div>
+                <div className="w-2 h-2 bg-primary-500 rounded-full animation-delay-400"></div>
+              </div>
+              <p className="text-sm text-slate-500">Waiting for opponent...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (layout === 'sidebar-right') {
+    return (
+      <div className="flex flex-col items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+        {/* Player O */}
+        <PlayerCard
+          player={playerO}
+          symbol="O"
+          isCurrentTurn={!currentTurnIsX && game?.status === 'in_progress'}
+          isCurrentUser={!isPlayerX}
+          isAI={game?.is_ai_game}
+          aiDifficulty={game?.ai_difficulty}
+          boardSize={boardSize}
+          vertical
+        />
+      </div>
+    )
+  }
+
+  // Default horizontal layout (mobile)
   return (
     <div className="relative flex items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
       {/* Game mode badge */}
@@ -119,7 +203,7 @@ const DIFFICULTY_LABELS = {
   hard: 'Unbeatable',
 }
 
-function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDifficulty, boardSize = 3 }) {
+function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDifficulty, boardSize = 3, vertical = false }) {
   const { currentTheme } = useSettings()
   // Use Connect 4 theme automatically for 7x6 board
   const effectiveTheme = boardSize === 7 ? SYMBOL_THEMES.connect4 : currentTheme
@@ -130,41 +214,55 @@ function PlayerCard({ player, symbol, isCurrentTurn, isCurrentUser, isAI, aiDiff
     <div
       className={cn(
         'flex items-center gap-2 sm:gap-3 p-1.5 sm:p-3 rounded-lg transition-all',
+        vertical && 'flex-col text-center p-4',
         isCurrentTurn && 'bg-slate-50 dark:bg-slate-800 ring-2 ring-primary-500'
       )}
     >
       <div className="relative">
         {isAI ? (
-          <div className="h-9 w-9 sm:h-12 sm:w-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full">
-            <Bot className="h-5 w-5 sm:h-6 sm:w-6" />
+          <div className={cn(
+            "flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full",
+            vertical ? "h-16 w-16" : "h-9 w-9 sm:h-12 sm:w-12"
+          )}>
+            <Bot className={vertical ? "h-8 w-8" : "h-5 w-5 sm:h-6 sm:w-6"} />
           </div>
         ) : (
-          <div className="h-9 w-9 sm:h-12 sm:w-12 flex items-center justify-center text-2xl sm:text-3xl">
+          <div className={cn(
+            "flex items-center justify-center",
+            vertical ? "h-16 w-16 text-4xl" : "h-9 w-9 sm:h-12 sm:w-12 text-2xl sm:text-3xl"
+          )}>
             {player?.avatar || '😀'}
           </div>
         )}
         <div className={cn(
-          'absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center',
+          'absolute -bottom-1 -right-1 rounded-full flex items-center justify-center',
+          vertical ? 'w-7 h-7' : 'w-5 h-5 sm:w-6 sm:h-6',
           symbol === 'X'
             ? 'bg-primary-500 text-white'
             : 'bg-rose-500 text-white'
         )}>
           {isClassic ? (
             symbol === 'X' ? (
-              <X className="h-3 w-3 sm:h-4 sm:w-4" strokeWidth={3} />
+              <X className={vertical ? "h-4 w-4" : "h-3 w-3 sm:h-4 sm:w-4"} strokeWidth={3} />
             ) : (
-              <Circle className="h-2.5 w-2.5 sm:h-3 sm:w-3" strokeWidth={3} />
+              <Circle className={vertical ? "h-3.5 w-3.5" : "h-2.5 w-2.5 sm:h-3 sm:h-3"} strokeWidth={3} />
             )
           ) : (
-            <span className="text-xs sm:text-sm">{themeSymbol}</span>
+            <span className={vertical ? "text-sm" : "text-xs sm:text-sm"}>{themeSymbol}</span>
           )}
         </div>
       </div>
       <div className="flex flex-col">
-        <span className="font-semibold text-xs sm:text-sm">
+        <span className={cn(
+          "font-semibold",
+          vertical ? "text-base" : "text-xs sm:text-sm"
+        )}>
           {isAI ? 'Bot' : player?.username || 'Waiting...'}
         </span>
-        <span className="text-[10px] sm:text-xs text-slate-500">
+        <span className={cn(
+          "text-slate-500",
+          vertical ? "text-sm" : "text-[10px] sm:text-xs"
+        )}>
           {isCurrentUser && '(You)'}
           {isAI && (DIFFICULTY_LABELS[aiDifficulty] || 'Unbeatable')}
         </span>

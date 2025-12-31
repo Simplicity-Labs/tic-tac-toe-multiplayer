@@ -374,9 +374,9 @@ export default function Game() {
     : null
 
   return (
-    <div className="max-w-lg mx-auto space-y-3 sm:space-y-6">
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-4 py-2 flex-shrink-0">
         <Button
           variant="ghost"
           size="sm"
@@ -410,22 +410,8 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Game status */}
-      <GameStatus
-        game={game}
-        playerX={playerX}
-        playerO={playerO}
-        currentUserId={user?.id}
-        timeRemaining={timeRemaining}
-        formattedTime={formattedTime}
-        isLow={isLow}
-        percentage={percentage}
-        timerEnabled={timerEnabled}
-        boardSize={game?.board_size || 3}
-      />
-
       {/* Reaction bubbles - fixed position to show above overlay */}
-      <div className="fixed top-20 left-0 right-0 z-[60] pointer-events-none px-4 max-w-lg mx-auto">
+      <div className="fixed top-20 left-0 right-0 z-[60] pointer-events-none px-4">
         {/* Our sent reactions (visual feedback) - always on LEFT */}
         <div className="absolute left-4">
           <ReactionBubbleContainer
@@ -442,35 +428,93 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Game board */}
-      <Board
-        board={game.board}
-        onCellClick={handleCellClick}
-        disabled={isDisabled}
-        currentPlayer={currentPlayer}
-        decayStatusArray={decayStatusArray}
-        isGravityMode={isGravityMode}
-        bombedCells={isBombMode ? (game.bombed_cells || []) : []}
-        isFogMode={isFogMode && isPlayer && game.status === 'in_progress'}
-        playerSymbol={currentPlayer}
-      />
+      {/* Main game area */}
+      <div className="flex-1 flex items-center justify-center gap-4 lg:gap-8 px-4 min-h-0">
+        {/* Left side - Player X (desktop only) */}
+        <div className="hidden lg:flex flex-col items-center gap-4 w-48 flex-shrink-0">
+          <GameStatus
+            game={game}
+            playerX={playerX}
+            playerO={playerO}
+            currentUserId={user?.id}
+            timeRemaining={timeRemaining}
+            formattedTime={formattedTime}
+            isLow={isLow}
+            percentage={percentage}
+            timerEnabled={timerEnabled}
+            boardSize={game?.board_size || 3}
+            layout="sidebar-left"
+          />
+        </div>
 
-      {/* Game info */}
-      {game.status === 'in_progress' && (
-        isPlayer ? (
-          <p className="text-center text-sm text-slate-500">
-            You are playing as{' '}
-            <span className={currentPlayer === 'X' ? 'text-primary-500 font-semibold' : 'text-rose-500 font-semibold'}>
-              {currentPlayer}
-            </span>
-          </p>
-        ) : (
-          <p className="text-center text-sm text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
-            <Eye className="h-4 w-4" />
-            You are spectating this game
-          </p>
-        )
-      )}
+        {/* Center - Board */}
+        <div className="flex flex-col items-center max-h-full">
+          {/* Mobile: GameStatus on top */}
+          <div className="lg:hidden w-full max-w-lg mb-3">
+            <GameStatus
+              game={game}
+              playerX={playerX}
+              playerO={playerO}
+              currentUserId={user?.id}
+              timeRemaining={timeRemaining}
+              formattedTime={formattedTime}
+              isLow={isLow}
+              percentage={percentage}
+              timerEnabled={timerEnabled}
+              boardSize={game?.board_size || 3}
+            />
+          </div>
+
+          {/* Game board - sized to available height */}
+          <div className="w-[min(90vw,calc(100vh-16rem))] lg:w-[min(70vw,calc(100vh-10rem))]">
+            <Board
+              board={game.board}
+              onCellClick={handleCellClick}
+              disabled={isDisabled}
+              currentPlayer={currentPlayer}
+              decayStatusArray={decayStatusArray}
+              isGravityMode={isGravityMode}
+              bombedCells={isBombMode ? (game.bombed_cells || []) : []}
+              isFogMode={isFogMode && isPlayer && game.status === 'in_progress'}
+              playerSymbol={currentPlayer}
+            />
+          </div>
+
+          {/* Game info */}
+          {game.status === 'in_progress' && (
+            isPlayer ? (
+              <p className="mt-2 text-center text-sm text-slate-500">
+                You are playing as{' '}
+                <span className={currentPlayer === 'X' ? 'text-primary-500 font-semibold' : 'text-rose-500 font-semibold'}>
+                  {currentPlayer}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-2 text-center text-sm text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
+                <Eye className="h-4 w-4" />
+                You are spectating this game
+              </p>
+            )
+          )}
+        </div>
+
+        {/* Right side - Player O (desktop only) */}
+        <div className="hidden lg:flex flex-col items-center gap-4 w-48 flex-shrink-0">
+          <GameStatus
+            game={game}
+            playerX={playerX}
+            playerO={playerO}
+            currentUserId={user?.id}
+            timeRemaining={timeRemaining}
+            formattedTime={formattedTime}
+            isLow={isLow}
+            percentage={percentage}
+            timerEnabled={timerEnabled}
+            boardSize={game?.board_size || 3}
+            layout="sidebar-right"
+          />
+        </div>
+      </div>
 
       {/* Floating reaction picker */}
       {isPlayer && (game?.status === 'in_progress' || game?.status === 'completed') && (
