@@ -55,7 +55,7 @@ cd tic-tac-toe-multiplayer
 ### 2. Install dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ### 3. Set up Supabase
@@ -80,7 +80,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ### 5. Start the development server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
@@ -166,7 +166,7 @@ function minimax(board, isMaximizing) {
 ### Manual Build
 
 ```bash
-npm run build
+bun run build
 # Output in dist/
 ```
 
@@ -174,11 +174,11 @@ npm run build
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format with Prettier |
+| `bun run dev` | Start development server |
+| `bun run build` | Build for production |
+| `bun run preview` | Preview production build |
+| `bun run lint` | Run ESLint |
+| `bun run format` | Format with Prettier |
 
 ## Contributing
 
