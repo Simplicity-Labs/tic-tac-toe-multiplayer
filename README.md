@@ -2,6 +2,8 @@
 
 A modern, real-time multiplayer Tic Tac Toe game built with React and Supabase.
 
+> 📝 **Blog post:** [AI Coding Tools Compared: Claude Code, Cursor, Lovable, Bolt & More](https://simplicitylabs.io/blog/en/ai-coding-tools-comparison) — This game was the benchmark used to test 8 AI coding tools head-to-head.
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)
 ![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase)
