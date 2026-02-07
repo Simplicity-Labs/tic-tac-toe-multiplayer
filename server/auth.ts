@@ -48,8 +48,12 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // Update session every 24 hours
   },
   trustedOrigins: [
+    // Development
     'http://localhost:5173',
     'http://localhost:3100',
+    // Production
+    'https://tictactoe.simplicitylabs.io',
+    // Dynamic from environment
     process.env.APP_URL || 'http://localhost:3100',
   ],
 })
