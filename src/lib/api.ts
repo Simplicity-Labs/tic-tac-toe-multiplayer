@@ -85,9 +85,10 @@ export const authApi = {
   },
 
   linkEmail(email: string, password: string) {
-    return request('/api/auth/link-account', {
+    // BetterAuth anonymous plugin: signing up while anonymous auto-links accounts
+    return request('/api/auth/sign-up/email', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, name: 'Player' }),
     })
   },
 }
