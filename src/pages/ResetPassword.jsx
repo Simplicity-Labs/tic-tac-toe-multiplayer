@@ -161,10 +161,6 @@ export default function ResetPassword() {
           </Card>
         </div>
       </div>
-
-      <footer className="p-4 text-center text-sm text-slate-500 relative z-10">
-        Built with React & Supabase
-      </footer>
     </div>
   )
 }

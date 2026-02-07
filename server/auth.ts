@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { anonymous } from 'better-auth/plugins'
+import { anonymous, magicLink } from 'better-auth/plugins'
+import { google } from 'better-auth/social-providers'
 import { db } from './db'
 import * as schema from './db/schema'
 
@@ -20,7 +21,28 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 6,
   },
-  plugins: [anonymous()],
+  socialProviders: {
+    google: google({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    }),
+  },
+  plugins: [
+    anonymous(),
+    magicLink({
+      // Magic link will send passwordless login emails
+      sendMagicLink: async ({ email, url, token }) => {
+        // For now, log to console - in production you'd send via email service
+        console.log(`Magic Link for ${email}: ${url}`)
+        // You could integrate with email providers like Resend, SendGrid, etc.
+        // await emailService.send({
+        //   to: email,
+        //   subject: 'Sign in to Tic Tac Toe',
+        //   text: `Click here to sign in: ${url}`
+        // })
+      },
+    }),
+  ],
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
