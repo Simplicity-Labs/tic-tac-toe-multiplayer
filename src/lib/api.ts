@@ -59,9 +59,20 @@ export const authApi = {
     })
   },
 
-  signInWithGoogle() {
-    // BetterAuth handles the OAuth redirect flow
-    window.location.href = '/api/auth/sign-in/social?provider=google&callbackURL=/'
+  async signInWithGoogle() {
+    // BetterAuth social sign-in is a POST that returns a redirect URL
+    const res = await fetch('/api/auth/sign-in/social', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: 'google', callbackURL: '/' }),
+      credentials: 'include',
+    })
+    if (res.redirected) {
+      window.location.href = res.url
+    } else {
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    }
   },
 
   signOut() {
