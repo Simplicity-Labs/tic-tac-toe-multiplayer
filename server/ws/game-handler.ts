@@ -59,13 +59,17 @@ async function updatePlayerStats(
       | 'aiHard'
 
     if (result === 'win') {
-      updates[`${prefix}Wins` as keyof Profile] = ((profile[`${prefix}Wins` as keyof Profile] as number) || 0) + 1
+      // Type-safe dynamic property access
+      const winsKey = `${prefix}Wins` as 'aiEasyWins' | 'aiMediumWins' | 'aiHardWins'
+      updates[winsKey] = ((profile[winsKey] as number) || 0) + 1
       updates.wins = (profile.wins || 0) + 1
     } else if (result === 'loss') {
-      updates[`${prefix}Losses` as keyof Profile] = ((profile[`${prefix}Losses` as keyof Profile] as number) || 0) + 1
+      const lossesKey = `${prefix}Losses` as 'aiEasyLosses' | 'aiMediumLosses' | 'aiHardLosses'
+      updates[lossesKey] = ((profile[lossesKey] as number) || 0) + 1
       updates.losses = (profile.losses || 0) + 1
     } else {
-      updates[`${prefix}Draws` as keyof Profile] = ((profile[`${prefix}Draws` as keyof Profile] as number) || 0) + 1
+      const drawsKey = `${prefix}Draws` as 'aiEasyDraws' | 'aiMediumDraws' | 'aiHardDraws'
+      updates[drawsKey] = ((profile[drawsKey] as number) || 0) + 1
       updates.draws = (profile.draws || 0) + 1
     }
   } else {
