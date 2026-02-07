@@ -59,6 +59,11 @@ export const authApi = {
     })
   },
 
+  signInWithGoogle() {
+    // BetterAuth handles the OAuth redirect flow
+    window.location.href = '/api/auth/sign-in/social?provider=google&callbackURL=/'
+  },
+
   signOut() {
     return request('/api/auth/sign-out', { method: 'POST' })
   },
