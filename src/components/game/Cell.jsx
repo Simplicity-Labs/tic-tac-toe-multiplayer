@@ -129,9 +129,6 @@ export function Cell({
       : !value && !disabled
   )
 
-  // Determine if cell is clickable
-  const isClickable = !isBombed && !isBlocker && !isFogged
-
   return (
     <button
       onClick={onClick}

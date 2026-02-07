@@ -20,7 +20,7 @@ export function getCachedProfile() {
         return profile
       }
     }
-  } catch (e) {
+  } catch {
     // Ignore cache errors
   }
   return null
@@ -34,7 +34,7 @@ export function getExpiredCachedProfile() {
       const { profile } = JSON.parse(cached)
       return profile
     }
-  } catch (e) {
+  } catch {
     // Ignore cache errors
   }
   return null
@@ -50,7 +50,7 @@ function setCachedProfile(profile) {
     } else {
       localStorage.removeItem(PROFILE_CACHE_KEY)
     }
-  } catch (e) {
+  } catch {
     // Ignore cache errors
   }
 }

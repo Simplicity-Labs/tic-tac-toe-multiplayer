@@ -4,7 +4,7 @@ import { Button } from './ui/Button'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
+  const { setTheme } = useTheme()
 
   return (
     <DropdownMenu.Root>

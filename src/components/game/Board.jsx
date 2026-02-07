@@ -12,7 +12,7 @@ export function Board({ board, onCellClick, disabled, currentPlayer, decayStatus
   }
 
   const boardSize = getBoardSize(board)
-  const { cols, rows } = getBoardDimensions(boardSize)
+  const { cols } = getBoardDimensions(boardSize)
   const winResult = checkWinner(board)
 
   // Calculate preview position for gravity mode

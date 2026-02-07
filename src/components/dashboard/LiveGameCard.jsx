@@ -45,7 +45,7 @@ export function LiveGameCard({ game }) {
 
           <div className="flex items-center gap-3">
             <Badge variant="outline" className="border-emerald-500 text-emerald-600 dark:text-emerald-400">
-              {currentTurnName}'s turn
+              {currentTurnName}&apos;s turn
             </Badge>
             <Button
               size="sm"

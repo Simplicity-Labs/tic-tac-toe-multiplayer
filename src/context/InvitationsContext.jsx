@@ -62,7 +62,7 @@ export function InvitationsProvider({ children }) {
     })
 
     // Also listen for invite:sent confirmation
-    const unsubSent = wsClient.on('invite:sent', (payload) => {
+    const unsubSent = wsClient.on('invite:sent', () => {
       // The sent invite state is already set by sendInvite below
     })
 

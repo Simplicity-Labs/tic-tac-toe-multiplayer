@@ -351,7 +351,7 @@ export default function Game() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <h2 className="text-xl font-semibold mb-2">Game not found</h2>
         <p className="text-slate-500 mb-4">
-          This game may have been deleted or doesn't exist.
+          This game may have been deleted or doesn&apos;t exist.
         </p>
         <Button onClick={() => navigate('/')}>
           <ArrowLeft className="h-4 w-4 mr-2" />

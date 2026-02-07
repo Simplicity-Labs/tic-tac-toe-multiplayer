@@ -105,7 +105,7 @@ const HOLIDAY_CONFIG = {
 
 export function WinOverlay({ game, currentUserId, onPlayAgain, playerX, playerO }) {
   const navigate = useNavigate()
-  const { currentTheme, isHolidaySeason, currentHolidayTheme } = useSettings()
+  const { currentTheme } = useSettings()
   const { playSound } = useSound()
   const [visible, setVisible] = useState(false)
   const [viewingBoard, setViewingBoard] = useState(false)

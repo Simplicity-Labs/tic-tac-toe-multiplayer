@@ -1,5 +1,5 @@
 /**
- * WebSocket client — single multiplexed connection with channel-based messaging.
+ * WebSocket client: single multiplexed connection with channel-based messaging.
  * Provides subscribe/unsubscribe, event listeners, and auto-reconnect.
  */
 

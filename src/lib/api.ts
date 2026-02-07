@@ -1,5 +1,5 @@
 /**
- * API client — wraps fetch calls to the backend.
+ * API client: wraps fetch calls to the backend.
  * All methods return { data, error } matching the old Supabase pattern.
  */
 

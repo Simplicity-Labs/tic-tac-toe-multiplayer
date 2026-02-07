@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth, getCachedProfile } from './context/AuthContext'
 import Layout from './components/Layout'
-import { DashboardSkeleton } from './components/DashboardSkeleton'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'

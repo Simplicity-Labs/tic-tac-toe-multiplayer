@@ -13,7 +13,7 @@ import {
   createEmptyPlacedAt,
   createRandomStartBoard,
   DEFAULT_DECAY_TURNS,
-  // @ts-expect-error — JS module
+  // @ts-expect-error - JS module
 } from '../../src/lib/gameLogic.js'
 
 const app = new Hono<AuthEnv>()
@@ -55,7 +55,7 @@ async function withPlayerProfiles(game: Game) {
   }
 }
 
-// POST /api/games — create a new game
+// POST /api/games - create a new game
 app.post('/', requireAuth, async (c) => {
   const user = c.get('user')
   const body = await c.req.json<{
@@ -124,7 +124,7 @@ app.post('/', requireAuth, async (c) => {
   return c.json(game, 201)
 })
 
-// GET /api/games/:id — get a game by ID
+// GET /api/games/:id - get a game by ID
 app.get('/:id', async (c) => {
   const id = c.req.param('id')
   const [game] = await db.select().from(games).where(eq(games.id, id))
@@ -136,7 +136,7 @@ app.get('/:id', async (c) => {
   return c.json(await withPlayerProfiles(game))
 })
 
-// PATCH /api/games/:id — update game (join as player_o)
+// PATCH /api/games/:id - update game (join as player_o)
 app.patch('/:id', requireAuth, async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
@@ -177,7 +177,7 @@ app.patch('/:id', requireAuth, async (c) => {
   return c.json({ error: 'Unknown action' }, 400)
 })
 
-// DELETE /api/games/:id — cancel a waiting game
+// DELETE /api/games/:id - cancel a waiting game
 app.delete('/:id', requireAuth, async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
@@ -205,7 +205,7 @@ app.delete('/:id', requireAuth, async (c) => {
   return c.json({ success: true })
 })
 
-// GET /api/games — list games (with query filters)
+// GET /api/games - list games (with query filters)
 app.get('/', requireAuth, async (c) => {
   const user = c.get('user')
   const filter = c.req.query('filter') // 'available', 'live', 'history', 'active'

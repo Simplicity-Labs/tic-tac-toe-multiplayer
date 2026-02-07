@@ -6,7 +6,7 @@ import { requireAuth, type AuthEnv } from '../middleware'
 
 const app = new Hono<AuthEnv>()
 
-// GET /api/profiles/:id — get a profile by ID
+// GET /api/profiles/:id - get a profile by ID
 app.get('/:id', async (c) => {
   const id = c.req.param('id')
   const [profile] = await db.select().from(profiles).where(eq(profiles.id, id))
@@ -18,7 +18,7 @@ app.get('/:id', async (c) => {
   return c.json(profile)
 })
 
-// POST /api/profiles — create profile for current user
+// POST /api/profiles - create profile for current user
 app.post('/', requireAuth, async (c) => {
   const user = c.get('user')
   const body = await c.req.json<{ username: string; avatar?: string }>()
@@ -61,7 +61,7 @@ app.post('/', requireAuth, async (c) => {
   return c.json(profile, 201)
 })
 
-// PATCH /api/profiles/:id — update own profile
+// PATCH /api/profiles/:id - update own profile
 app.patch('/:id', requireAuth, async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
@@ -108,7 +108,7 @@ app.patch('/:id', requireAuth, async (c) => {
   return c.json(updated)
 })
 
-// GET /api/profiles — leaderboard (sorted by pvp_wins desc)
+// GET /api/profiles - leaderboard (sorted by pvp_wins desc)
 app.get('/', async (c) => {
   const limit = parseInt(c.req.query('limit') || '50')
   const allProfiles = await db.select().from(profiles)
