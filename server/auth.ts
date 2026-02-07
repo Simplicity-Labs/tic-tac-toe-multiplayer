@@ -1,7 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { anonymous, magicLink } from 'better-auth/plugins'
-import { google } from 'better-auth/social-providers'
 import { db } from './db'
 import * as schema from './db/schema'
 
@@ -22,10 +21,10 @@ export const auth = betterAuth({
     minPasswordLength: 6,
   },
   socialProviders: {
-    google: google({
+    google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    }),
+    },
   },
   plugins: [
     anonymous(),
