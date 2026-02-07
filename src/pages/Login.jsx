@@ -405,7 +405,7 @@ export default function Login() {
 
       {/* Footer */}
       <footer className="p-4 text-center text-sm text-slate-500 relative z-10">
-        Built with React & Supabase
+        Built with React & Hono
       </footer>
     </div>
   )

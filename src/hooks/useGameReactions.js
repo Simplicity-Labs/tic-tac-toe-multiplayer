@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+import { wsClient } from '../lib/ws'
 
 const COOLDOWN_MS = 3000 // 3 seconds between reactions
 const REACTION_DISPLAY_DURATION = 3000 // How long to keep reactions in state
@@ -10,48 +10,30 @@ export function useGameReactions(gameId, userId, profile, isAIGame = false) {
   const [canSend, setCanSend] = useState(true)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
 
-  const channelRef = useRef(null)
   const cooldownTimerRef = useRef(null)
   const cooldownIntervalRef = useRef(null)
 
-  // Subscribe to reactions channel (PvP only)
+  // Subscribe to reaction events via WebSocket (PvP only)
   useEffect(() => {
     if (!gameId || !userId || isAIGame) return
 
-    const channel = supabase.channel(`reactions:${gameId}`, {
-      config: { broadcast: { ack: true } },
+    // The game channel subscription is already managed by useGame
+    // We just listen for reaction events
+    const unsub = wsClient.on('reaction:received', (payload) => {
+      if (payload.senderId !== userId) {
+        const reaction = {
+          ...payload,
+          id: `${payload.senderId}-${payload.timestamp}`,
+        }
+        setReactions((prev) => [...prev, reaction])
+
+        setTimeout(() => {
+          setReactions((prev) => prev.filter((r) => r.id !== reaction.id))
+        }, REACTION_DISPLAY_DURATION)
+      }
     })
 
-    channel
-      .on('broadcast', { event: 'emoji' }, ({ payload }) => {
-        // Only show reactions from other players
-        if (payload.senderId !== userId) {
-          const reaction = {
-            ...payload,
-            id: `${payload.senderId}-${payload.timestamp}`,
-          }
-          setReactions((prev) => [...prev, reaction])
-
-          // Auto-remove reaction after display duration
-          setTimeout(() => {
-            setReactions((prev) => prev.filter((r) => r.id !== reaction.id))
-          }, REACTION_DISPLAY_DURATION)
-        }
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Reactions channel subscribed')
-        }
-      })
-
-    channelRef.current = channel
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-      }
-    }
+    return () => unsub()
   }, [gameId, userId, isAIGame])
 
   // Cleanup cooldown timers on unmount
@@ -62,7 +44,6 @@ export function useGameReactions(gameId, userId, profile, isAIGame = false) {
     }
   }, [])
 
-  // Send a reaction
   const sendReaction = useCallback(
     async (emoji) => {
       if (!canSend || !gameId) return { error: 'Cannot send reaction' }
@@ -78,7 +59,6 @@ export function useGameReactions(gameId, userId, profile, isAIGame = false) {
       setCanSend(false)
       setCooldownRemaining(COOLDOWN_MS)
 
-      // Update cooldown display
       const startTime = Date.now()
       cooldownIntervalRef.current = setInterval(() => {
         const elapsed = Date.now() - startTime
@@ -102,32 +82,18 @@ export function useGameReactions(gameId, userId, profile, isAIGame = false) {
         setSentReactions((prev) => prev.filter((r) => r.id !== sentReaction.id))
       }, REACTION_DISPLAY_DURATION)
 
-      // For AI games, don't broadcast (AI will respond separately)
+      // For AI games, don't broadcast
       if (isAIGame) {
         return { data: reaction }
       }
 
-      // For PvP games, broadcast to opponent
-      if (channelRef.current) {
-        try {
-          await channelRef.current.send({
-            type: 'broadcast',
-            event: 'emoji',
-            payload: reaction,
-          })
-          return { data: reaction }
-        } catch (error) {
-          console.error('Failed to send reaction:', error)
-          return { error: error.message }
-        }
-      }
-
+      // For PvP, send via WebSocket
+      wsClient.sendReaction(gameId, emoji, profile?.username || 'Player')
       return { data: reaction }
     },
     [canSend, gameId, userId, profile, isAIGame]
   )
 
-  // Add an AI reaction (called from AI personality system)
   const addAIReaction = useCallback((emoji, delay = 0) => {
     setTimeout(() => {
       const reaction = {
@@ -139,22 +105,20 @@ export function useGameReactions(gameId, userId, profile, isAIGame = false) {
       }
       setReactions((prev) => [...prev, reaction])
 
-      // Auto-remove after display duration
       setTimeout(() => {
         setReactions((prev) => prev.filter((r) => r.id !== reaction.id))
       }, REACTION_DISPLAY_DURATION)
     }, delay)
   }, [])
 
-  // Clear all reactions
   const clearReactions = useCallback(() => {
     setReactions([])
     setSentReactions([])
   }, [])
 
   return {
-    reactions,        // Reactions from opponent/AI
-    sentReactions,    // Reactions we sent
+    reactions,
+    sentReactions,
     sendReaction,
     addAIReaction,
     clearReactions,

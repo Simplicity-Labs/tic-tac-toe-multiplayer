@@ -38,3 +38,5 @@ Thumbs.db
 supabase/.temp/
 src/context/AuthContext.jsx
 IDEAS.md
+data/
+*.db

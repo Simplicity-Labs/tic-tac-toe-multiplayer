@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3100:3100"
+    volumes:
+      - ttt-data:/app/data
+    environment:
+      - PORT=3100
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-change-me-in-production}
+      - APP_URL=${APP_URL:-http://localhost:3100}
+      - DATA_DIR=/app/data
+    restart: unless-stopped
+
+volumes:
+  ttt-data:

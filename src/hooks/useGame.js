@@ -1,29 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import {
-  checkWinner,
-  checkDraw,
-  getAIMove,
-  createEmptyBoard,
-  createEmptyPlacedAt,
-  createRandomStartBoard,
-  isEmpty,
-  applyDecay,
-  DEFAULT_DECAY_TURNS,
-  getGravityDropPosition,
-  getBoardSize,
-  // Bomb mode
-  bombRandomCell,
-  isBombed,
-  checkDrawWithBombs,
-  // Blocker mode
-  placeRandomBlocker,
-  BLOCKER_MARKER,
-  checkDrawWithBlockers,
-} from '../lib/gameLogic'
+import { gameApi, profileApi } from '../lib/api'
+import { wsClient } from '../lib/ws'
+import { getAIMove } from '../lib/gameLogic'
+import { normalizeGame, makeLocalMove, makeLocalAIMove } from './useGameHelpers'
 
-const DEFAULT_TURN_DURATION = 30 // seconds
+const DEFAULT_TURN_DURATION = 30
+
+// ─── Hook: Single Game ───────────────────────────────────────────────────
 
 export function useGame(gameId) {
   const { user, profile } = useAuth()
@@ -35,11 +19,10 @@ export function useGame(gameId) {
   const fetchedGameIdRef = useRef(null)
   const playerOIdRef = useRef(null)
 
-  // Fetch game and subscribe to updates
+  // Fetch game and subscribe to WS updates
   useEffect(() => {
     if (!gameId) return
 
-    // Reset state when gameId changes
     if (fetchedGameIdRef.current !== gameId) {
       setGame(null)
       setPlayerX(null)
@@ -53,33 +36,19 @@ export function useGame(gameId) {
 
     const fetchGameData = async () => {
       try {
-        const { data, error: fetchError } = await supabase
-          .from('games')
-          .select('*')
-          .eq('id', gameId)
-          .single()
+        const { data, error: fetchError } = await gameApi.get(gameId)
+        if (fetchError) throw new Error(fetchError.message)
 
-        if (fetchError) throw fetchError
-        setGame(data)
+        const normalized = normalizeGame(data)
+        setGame(normalized)
 
-        // Fetch player X profile
-        if (data.player_x) {
-          const { data: xProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.player_x)
-            .maybeSingle()
+        if (normalized.player_x) {
+          const { data: xProfile } = await profileApi.get(normalized.player_x)
           if (xProfile) setPlayerX(xProfile)
         }
-
-        // Fetch player O profile if present
-        if (data.player_o && playerOIdRef.current !== data.player_o) {
-          playerOIdRef.current = data.player_o
-          const { data: oProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.player_o)
-            .maybeSingle()
+        if (normalized.player_o && playerOIdRef.current !== normalized.player_o) {
+          playerOIdRef.current = normalized.player_o
+          const { data: oProfile } = await profileApi.get(normalized.player_o)
           if (oProfile) setPlayerO(oProfile)
         }
       } catch (err) {
@@ -91,610 +60,98 @@ export function useGame(gameId) {
 
     fetchGameData()
 
-    const channel = supabase
-      .channel(`game:${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'games',
-          filter: `id=eq.${gameId}`,
-        },
-        async (payload) => {
-          if (payload.new) {
-            setGame(payload.new)
+    wsClient.subscribe(`game:${gameId}`)
 
-            // Fetch player O profile if they just joined
-            if (payload.new.player_o && playerOIdRef.current !== payload.new.player_o) {
-              playerOIdRef.current = payload.new.player_o
-              const { data: oProfile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', payload.new.player_o)
-                .maybeSingle()
-              if (oProfile) setPlayerO(oProfile)
-            }
-          }
+    const unsubUpdate = wsClient.on('game:updated', async (data) => {
+      const normalized = normalizeGame(data)
+      if (normalized && normalized.id === gameId) {
+        setGame(normalized)
+
+        if (normalized.player_o && playerOIdRef.current !== normalized.player_o) {
+          playerOIdRef.current = normalized.player_o
+          const { data: oProfile } = await profileApi.get(normalized.player_o)
+          if (oProfile) setPlayerO(oProfile)
         }
-      )
-      .subscribe()
+      }
+    })
+
+    const unsubDeleted = wsClient.on('game:deleted', (data) => {
+      if (data?.gameId === gameId) setGame(null)
+    })
 
     return () => {
-      supabase.removeChannel(channel)
+      wsClient.unsubscribe(`game:${gameId}`)
+      unsubUpdate()
+      unsubDeleted()
     }
   }, [gameId])
 
-  // Make a move
   const makeMove = useCallback(
     async (position) => {
       if (!game || !user) return { error: 'No game or user' }
+      if (game.current_turn !== user.id) return { error: "It's not your turn" }
 
-      // Validate it's the player's turn
-      if (game.current_turn !== user.id) {
-        return { error: "It's not your turn" }
+      if (game.is_ai_game) {
+        return await makeLocalMove(game, user, position, setGame)
       }
 
-      // Handle gravity mode - find where piece actually lands
-      const isGravityMode = game.game_mode === 'gravity'
-      const isBombMode = game.game_mode === 'bomb'
-      const isBlockerMode = game.game_mode === 'blocker'
-      let actualPosition = position
-
-      if (isGravityMode) {
-        const boardSize = getBoardSize(game.board)
-        const bombedCells = isBombMode ? (game.bombed_cells || []) : []
-        actualPosition = getGravityDropPosition(game.board, position, boardSize, bombedCells)
-        if (actualPosition === null) {
-          return { error: 'Column is full' }
-        }
-      } else {
-        // Validate position is empty (non-gravity mode)
-        if (!isEmpty(game.board[position])) {
-          return { error: 'Position already taken' }
-        }
-        // Check if cell is bombed (bomb mode)
-        if (isBombMode && isBombed(position, game.bombed_cells || [])) {
-          return { error: 'This cell has been bombed!' }
-        }
-        // Check if cell has a blocker (blocker mode)
-        if (isBlockerMode && game.board[position] === BLOCKER_MARKER) {
-          return { error: 'This cell is blocked!' }
-        }
-      }
-
-      // Determine the player's symbol
-      const symbol = game.player_x === user.id ? 'X' : 'O'
-      let newBoard = [...game.board]
-      newBoard[actualPosition] = symbol
-
-      // Handle decay mode - track when piece was placed
-      const isDecayMode = game.game_mode === 'decay'
-      let newPlacedAt = game.placed_at ? [...game.placed_at] : null
-      let newTurnCount = (game.turn_count || 0) + 1
-
-      if (isDecayMode && newPlacedAt) {
-        // Record when this piece was placed
-        newPlacedAt[actualPosition] = newTurnCount
-      }
-
-      // Check for winner BEFORE applying decay
-      let winResult = checkWinner(newBoard)
-      // Use appropriate draw check based on game mode
-      let isDraw = false
-      if (!winResult) {
-        if (isBombMode) {
-          isDraw = checkDrawWithBombs(newBoard, game.bombed_cells || [])
-        } else if (isBlockerMode) {
-          isDraw = checkDrawWithBlockers(newBoard)
-        } else {
-          isDraw = checkDraw(newBoard)
-        }
-      }
-
-      // Apply decay AFTER checking for win (pieces decay after the move)
-      if (isDecayMode && newPlacedAt && !winResult && !isDraw) {
-        const decayResult = applyDecay(newBoard, newPlacedAt, newTurnCount, game.decay_turns || DEFAULT_DECAY_TURNS)
-        newBoard = decayResult.board
-        newPlacedAt = decayResult.placedAt
-
-        // Check again for draw after decay (board might have opened up or become empty)
-        // Note: We don't re-check for win after decay since pieces can only disappear, not appear
-      }
-
-      let updates = {
-        board: newBoard,
-        turn_started_at: new Date().toISOString(),
-        turn_count: newTurnCount,
-      }
-
-      // Add decay mode fields
-      if (isDecayMode) {
-        updates.placed_at = newPlacedAt
-      }
-
-      // Handle bomb mode - bomb a random cell every 2 turns (starting from turn 2)
-      let newBombedCells = game.bombed_cells || []
-      if (isBombMode && !winResult && !isDraw && newTurnCount >= 2 && newTurnCount % 2 === 0) {
-        const bombedCell = bombRandomCell(newBoard, newBombedCells)
-        if (bombedCell !== null) {
-          newBombedCells = [...newBombedCells, bombedCell]
-          updates.bombed_cells = newBombedCells
-        }
-      }
-
-      // Handle blocker mode - place a random blocker after each move
-      if (isBlockerMode && !winResult && !isDraw) {
-        const blockerResult = placeRandomBlocker(newBoard)
-        if (blockerResult.blockerPosition !== null) {
-          newBoard = blockerResult.board
-          updates.board = newBoard
-          // Re-check for draw after placing blocker
-          isDraw = checkDrawWithBlockers(newBoard)
-          if (isDraw) {
-            updates.status = 'completed'
-            updates.winner = null
-            updates.completed_at = new Date().toISOString()
-          }
-        }
-      }
-
-      if (winResult) {
-        updates.status = 'completed'
-        // In Misère mode, making a line means you LOSE
-        if (game.game_mode === 'misere') {
-          // The player who made the line loses - winner is the other player (or AI)
-          if (game.is_ai_game) {
-            updates.winner = 'ai' // Human made a line, AI wins
-          } else {
-            updates.winner = game.player_x === user.id ? game.player_o : game.player_x
-          }
-        } else {
-          updates.winner = user.id
-        }
-        updates.completed_at = new Date().toISOString()
-      } else if (isDraw) {
-        updates.status = 'completed'
-        updates.winner = null
-        updates.completed_at = new Date().toISOString()
-      } else {
-        // Switch turns - for AI games, set to 'ai' marker; otherwise switch to other player
-        if (game.is_ai_game) {
-          updates.current_turn = null // null indicates AI's turn
-        } else {
-          updates.current_turn =
-            game.player_x === user.id ? game.player_o : game.player_x
-        }
-      }
-
-      const { data, error: updateError } = await supabase
-        .from('games')
-        .update(updates)
-        .eq('id', game.id)
-        .select()
-        .single()
-
-      if (updateError) {
-        return { error: updateError.message }
-      }
-
-      // Record the move
-      await supabase.from('moves').insert({
-        game_id: game.id,
-        player_id: user.id,
-        position,
-      })
-
-      // Update stats if game is over
-      if (updates.status === 'completed') {
-        if (game.is_ai_game) {
-          // AI game - player wins or draws
-          const difficulty = game.ai_difficulty || 'hard'
-          const diffPrefix = `ai_${difficulty}`
-          const { data: playerProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single()
-
-          if (playerProfile) {
-            const statsUpdates = {}
-            if (winResult) {
-              statsUpdates[`${diffPrefix}_wins`] = (playerProfile[`${diffPrefix}_wins`] || 0) + 1
-              statsUpdates.wins = (playerProfile.wins || 0) + 1
-            } else if (isDraw) {
-              statsUpdates[`${diffPrefix}_draws`] = (playerProfile[`${diffPrefix}_draws`] || 0) + 1
-              statsUpdates.draws = (playerProfile.draws || 0) + 1
-            }
-            await supabase.from('profiles').update(statsUpdates).eq('id', user.id)
-          }
-        } else {
-          // PvP game - update both players
-          const players = [game.player_x, game.player_o].filter(Boolean)
-          for (const playerId of players) {
-            const { data: playerProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', playerId)
-              .single()
-
-            if (playerProfile) {
-              const statsUpdates = {}
-              if (winResult && user.id === playerId) {
-                // This player won
-                statsUpdates.pvp_wins = (playerProfile.pvp_wins || 0) + 1
-                statsUpdates.wins = (playerProfile.wins || 0) + 1
-              } else if (winResult) {
-                // This player lost
-                statsUpdates.pvp_losses = (playerProfile.pvp_losses || 0) + 1
-                statsUpdates.losses = (playerProfile.losses || 0) + 1
-              } else if (isDraw) {
-                statsUpdates.pvp_draws = (playerProfile.pvp_draws || 0) + 1
-                statsUpdates.draws = (playerProfile.draws || 0) + 1
-              }
-              await supabase.from('profiles').update(statsUpdates).eq('id', playerId)
-            }
-          }
-        }
-      }
-
-      setGame(data)
-      return { data }
+      wsClient.gameMove(game.id, position)
+      return { data: true }
     },
     [game, user]
   )
 
-  // Make AI move
   const makeAIMove = useCallback(async () => {
     if (!game || game.status !== 'in_progress') return
 
     const difficulty = game.ai_difficulty || 'hard'
     const isGravityMode = game.game_mode === 'gravity'
-    const isBombMode = game.game_mode === 'bomb'
-    const isBlockerMode = game.game_mode === 'blocker'
-
-    // getAIMove now handles gravity mode internally and returns the correct position
-    // For bomb/blocker modes, AI uses standard move selection (blocked cells handled separately)
     const aiPosition = getAIMove(game.board, difficulty, isGravityMode)
     if (aiPosition === null) return
 
-    // For bomb mode, skip if bombed cell
-    if (isBombMode && isBombed(aiPosition, game.bombed_cells || [])) {
-      // Try to find another position (simple fallback)
-      const available = game.board
-        .map((cell, i) => (isEmpty(cell) && !isBombed(i, game.bombed_cells || [])) ? i : -1)
-        .filter(i => i !== -1)
-      if (available.length === 0) return
-      // Use first available for simplicity
-    }
-
-    let newBoard = [...game.board]
-    newBoard[aiPosition] = 'O'
-
-    // Handle decay mode - track when piece was placed
-    const isDecayMode = game.game_mode === 'decay'
-    let newPlacedAt = game.placed_at ? [...game.placed_at] : null
-    let newTurnCount = (game.turn_count || 0) + 1
-
-    if (isDecayMode && newPlacedAt) {
-      // Record when this piece was placed
-      newPlacedAt[aiPosition] = newTurnCount
-    }
-
-    // Check for winner BEFORE applying decay
-    let winResult = checkWinner(newBoard)
-    // Use appropriate draw check based on game mode
-    let isDraw = false
-    if (!winResult) {
-      if (isBombMode) {
-        isDraw = checkDrawWithBombs(newBoard, game.bombed_cells || [])
-      } else if (isBlockerMode) {
-        isDraw = checkDrawWithBlockers(newBoard)
-      } else {
-        isDraw = checkDraw(newBoard)
-      }
-    }
-
-    // Apply decay AFTER checking for win
-    if (isDecayMode && newPlacedAt && !winResult && !isDraw) {
-      const decayResult = applyDecay(newBoard, newPlacedAt, newTurnCount, game.decay_turns || DEFAULT_DECAY_TURNS)
-      newBoard = decayResult.board
-      newPlacedAt = decayResult.placedAt
-    }
-
-    let updates = {
-      board: newBoard,
-      turn_started_at: new Date().toISOString(),
-      turn_count: newTurnCount,
-    }
-
-    // Add decay mode fields
-    if (isDecayMode) {
-      updates.placed_at = newPlacedAt
-    }
-
-    // Handle bomb mode - bomb a random cell every 2 turns
-    let newBombedCells = game.bombed_cells || []
-    if (isBombMode && !winResult && !isDraw && newTurnCount >= 2 && newTurnCount % 2 === 0) {
-      const bombedCell = bombRandomCell(newBoard, newBombedCells)
-      if (bombedCell !== null) {
-        newBombedCells = [...newBombedCells, bombedCell]
-        updates.bombed_cells = newBombedCells
-      }
-    }
-
-    // Handle blocker mode - place a random blocker after each move
-    if (isBlockerMode && !winResult && !isDraw) {
-      const blockerResult = placeRandomBlocker(newBoard)
-      if (blockerResult.blockerPosition !== null) {
-        newBoard = blockerResult.board
-        updates.board = newBoard
-        // Re-check for draw after placing blocker
-        isDraw = checkDrawWithBlockers(newBoard)
-        if (isDraw) {
-          updates.status = 'completed'
-          updates.winner = null
-          updates.completed_at = new Date().toISOString()
-        }
-      }
-    }
-
-    if (winResult) {
-      updates.status = 'completed'
-      // In Misère mode, making a line means you LOSE
-      if (game.game_mode === 'misere') {
-        updates.winner = game.player_x // AI made a line, human wins
-      } else {
-        updates.winner = 'ai'
-      }
-      updates.completed_at = new Date().toISOString()
-    } else if (isDraw) {
-      updates.status = 'completed'
-      updates.winner = null
-      updates.completed_at = new Date().toISOString()
-    } else {
-      updates.current_turn = game.player_x
-    }
-
-    const { data, error: updateError } = await supabase
-      .from('games')
-      .update(updates)
-      .eq('id', game.id)
-      .select()
-      .single()
-
-    if (!updateError) {
-      // Update stats if game is over
-      if (updates.status === 'completed') {
-        const diffPrefix = `ai_${difficulty}`
-        const { data: playerProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', game.player_x)
-          .single()
-
-        if (playerProfile) {
-          const statsUpdates = {}
-
-          if (winResult) {
-            // AI won - player lost
-            statsUpdates[`${diffPrefix}_losses`] = (playerProfile[`${diffPrefix}_losses`] || 0) + 1
-            statsUpdates.losses = (playerProfile.losses || 0) + 1
-          } else if (isDraw) {
-            statsUpdates[`${diffPrefix}_draws`] = (playerProfile[`${diffPrefix}_draws`] || 0) + 1
-            statsUpdates.draws = (playerProfile.draws || 0) + 1
-          }
-
-          await supabase.from('profiles').update(statsUpdates).eq('id', game.player_x)
-        }
-      }
-      setGame(data)
-    }
+    await makeLocalAIMove(game, aiPosition, difficulty, setGame)
   }, [game])
 
-  // Get stat column names based on game type
-  const getStatColumns = useCallback((isAI, difficulty) => {
-    if (!isAI) {
-      return { wins: 'pvp_wins', losses: 'pvp_losses', draws: 'pvp_draws' }
-    }
-    const diffPrefix = `ai_${difficulty || 'hard'}`
-    return {
-      wins: `${diffPrefix}_wins`,
-      losses: `${diffPrefix}_losses`,
-      draws: `${diffPrefix}_draws`,
-    }
-  }, [])
-
-  // Update player stats
-  const updateStats = useCallback(
-    async (winnerId, forfeiterId = null) => {
-      if (!game) return
-
-      const isAI = game.is_ai_game
-      const difficulty = game.ai_difficulty
-      const statCols = getStatColumns(isAI, difficulty)
-
-      // For AI games, only update the human player's stats
-      if (isAI) {
-        const { data: playerProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', game.player_x)
-          .single()
-
-        if (playerProfile) {
-          const updates = {}
-
-          if (winnerId === null) {
-            // Draw
-            updates[statCols.draws] = (playerProfile[statCols.draws] || 0) + 1
-            updates.draws = (playerProfile.draws || 0) + 1
-          } else if (winnerId === 'ai') {
-            // AI won - player lost
-            updates[statCols.losses] = (playerProfile[statCols.losses] || 0) + 1
-            updates.losses = (playerProfile.losses || 0) + 1
-          } else {
-            // Player won
-            updates[statCols.wins] = (playerProfile[statCols.wins] || 0) + 1
-            updates.wins = (playerProfile.wins || 0) + 1
-          }
-
-          if (forfeiterId === game.player_x) {
-            updates.forfeits = (playerProfile.forfeits || 0) + 1
-          }
-
-          await supabase.from('profiles').update(updates).eq('id', game.player_x)
-        }
-        return
-      }
-
-      // For PvP games, update both players
-      const players = [game.player_x, game.player_o].filter(Boolean)
-
-      for (const playerId of players) {
-        const { data: playerProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', playerId)
-          .single()
-
-        if (playerProfile) {
-          const updates = {}
-
-          if (winnerId === null) {
-            // Draw
-            updates[statCols.draws] = (playerProfile[statCols.draws] || 0) + 1
-            updates.draws = (playerProfile.draws || 0) + 1
-          } else if (winnerId === playerId) {
-            // Win
-            updates[statCols.wins] = (playerProfile[statCols.wins] || 0) + 1
-            updates.wins = (playerProfile.wins || 0) + 1
-          } else {
-            // Loss
-            updates[statCols.losses] = (playerProfile[statCols.losses] || 0) + 1
-            updates.losses = (playerProfile.losses || 0) + 1
-          }
-
-          if (forfeiterId === playerId) {
-            updates.forfeits = (playerProfile.forfeits || 0) + 1
-          }
-
-          await supabase.from('profiles').update(updates).eq('id', playerId)
-        }
-      }
-    },
-    [game, getStatColumns]
-  )
-
-  // Handle timeout (forfeit by timeout)
   const handleTimeout = useCallback(async () => {
     if (!game || game.status !== 'in_progress') return
+    wsClient.gameTimeout(game.id)
+  }, [game])
 
-    const forfeiterId = game.current_turn // Person who timed out
-    const winner = game.is_ai_game
-      ? (forfeiterId === game.player_x ? 'ai' : game.player_x)
-      : (forfeiterId === game.player_x ? game.player_o : game.player_x)
-
-    const { data, error: updateError } = await supabase
-      .from('games')
-      .update({
-        status: 'completed',
-        winner: winner,
-        forfeit_by: forfeiterId,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', game.id)
-      .select()
-      .single()
-
-    if (!updateError) {
-      await updateStats(winner, forfeiterId)
-      setGame(data)
-    }
-  }, [game, updateStats])
-
-  // Forfeit the game (current user loses) or cancel if waiting
   const forfeit = useCallback(async () => {
     if (!game || !user) return { error: 'No game or user' }
     if (game.status !== 'in_progress' && game.status !== 'waiting') {
       return { error: 'Game is not active' }
     }
 
-    // If game is waiting (no opponent yet), just delete it
     if (game.status === 'waiting') {
-      const { error: deleteError } = await supabase
-        .from('games')
-        .delete()
-        .eq('id', game.id)
-
-      if (deleteError) {
-        return { error: deleteError.message }
-      }
-
+      const { error } = await gameApi.delete(game.id)
+      if (error) return { error: error.message }
       setGame(null)
       return { data: null, cancelled: true }
     }
 
-    // Game is in progress - determine the winner (opponent)
-    const forfeiterId = user.id
-    let winner
-    if (game.is_ai_game) {
-      winner = 'ai'
-    } else {
-      winner = game.player_x === user.id ? game.player_o : game.player_x
-    }
+    wsClient.gameForfeit(game.id)
+    return { data: true }
+  }, [game, user])
 
-    const { data, error: updateError } = await supabase
-      .from('games')
-      .update({
-        status: 'completed',
-        winner: winner,
-        forfeit_by: forfeiterId,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', game.id)
-      .select()
-      .single()
-
-    if (updateError) {
-      return { error: updateError.message }
-    }
-
-    // Update stats - forfeiter loses, opponent wins
-    await updateStats(winner, forfeiterId)
-
-    setGame(data)
-    return { data }
-  }, [game, user, updateStats])
-
-  // Get current player's symbol
   const getPlayerSymbol = useCallback(() => {
     if (!game || !user) return null
     return game.player_x === user.id ? 'X' : 'O'
   }, [game, user])
 
-  // Check if it's the current user's turn
   const isMyTurn = useCallback(() => {
     if (!game || !user) return false
     return game.current_turn === user.id
   }, [game, user])
 
   return {
-    game,
-    loading,
-    error,
-    playerX,
-    playerO,
-    makeMove,
-    makeAIMove,
-    handleTimeout,
-    forfeit,
-    getPlayerSymbol,
-    isMyTurn,
+    game, loading, error, playerX, playerO,
+    makeMove, makeAIMove, handleTimeout, forfeit, getPlayerSymbol, isMyTurn,
   }
 }
 
-// Hook to get user's active game (waiting or in_progress)
+// ─── Hook: Active Game ───────────────────────────────────────────────────
+
 export function useActiveGame() {
   const { user } = useAuth()
   const [activeGame, setActiveGame] = useState(null)
@@ -702,26 +159,11 @@ export function useActiveGame() {
   const [forfeitLoading, setForfeitLoading] = useState(false)
 
   const fetchActiveGame = useCallback(async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
-
+    if (!user) { setLoading(false); return }
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .select('*')
-        .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
-        .in('status', ['waiting', 'in_progress'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (error) {
-        console.error('Error fetching active game:', error)
-      }
-
-      setActiveGame(data || null)
+      const { data, error } = await gameApi.active()
+      if (error) console.error('Error fetching active game:', error)
+      setActiveGame(data ? normalizeGame(data) : null)
     } catch (err) {
       console.error('Error fetching active game:', err)
       setActiveGame(null)
@@ -730,90 +172,17 @@ export function useActiveGame() {
     }
   }, [user])
 
-  // Forfeit or cancel the active game from dashboard
   const forfeitGame = useCallback(async () => {
     if (!activeGame || !user) return { error: 'No active game' }
-
     setForfeitLoading(true)
-
     try {
-      // If game is waiting (no opponent yet), just delete it
       if (activeGame.status === 'waiting') {
-        const { error: deleteError } = await supabase
-          .from('games')
-          .delete()
-          .eq('id', activeGame.id)
-
-        if (deleteError) {
-          return { error: deleteError.message }
-        }
-
+        const { error } = await gameApi.delete(activeGame.id)
+        if (error) return { error: error.message }
         setActiveGame(null)
         return { data: null, cancelled: true }
       }
-
-      // Game is in progress - determine the winner (opponent)
-      const forfeiterId = user.id
-      let winner
-      if (activeGame.is_ai_game) {
-        winner = 'ai'
-      } else {
-        winner = activeGame.player_x === user.id ? activeGame.player_o : activeGame.player_x
-      }
-
-      const { error: updateError } = await supabase
-        .from('games')
-        .update({
-          status: 'completed',
-          winner: winner,
-          forfeit_by: forfeiterId,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', activeGame.id)
-
-      if (updateError) {
-        return { error: updateError.message }
-      }
-
-      // Update stats for forfeiter
-      const { data: playerProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (playerProfile) {
-        const isAI = activeGame.is_ai_game
-        const statCols = isAI
-          ? { losses: `ai_${activeGame.ai_difficulty || 'hard'}_losses` }
-          : { losses: 'pvp_losses' }
-
-        const updates = {
-          [statCols.losses]: (playerProfile[statCols.losses] || 0) + 1,
-          losses: (playerProfile.losses || 0) + 1,
-          forfeits: (playerProfile.forfeits || 0) + 1,
-        }
-
-        await supabase.from('profiles').update(updates).eq('id', user.id)
-      }
-
-      // For PvP games, also update opponent's wins
-      if (!activeGame.is_ai_game && winner) {
-        const { data: opponentProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', winner)
-          .single()
-
-        if (opponentProfile) {
-          const updates = {
-            pvp_wins: (opponentProfile.pvp_wins || 0) + 1,
-            wins: (opponentProfile.wins || 0) + 1,
-          }
-          await supabase.from('profiles').update(updates).eq('id', winner)
-        }
-      }
-
+      wsClient.gameForfeit(activeGame.id)
       setActiveGame(null)
       return { data: null }
     } finally {
@@ -821,73 +190,29 @@ export function useActiveGame() {
     }
   }, [activeGame, user])
 
-  useEffect(() => {
-    fetchActiveGame()
-  }, [fetchActiveGame])
+  useEffect(() => { fetchActiveGame() }, [fetchActiveGame])
 
   return { activeGame, loading, refetch: fetchActiveGame, forfeitGame, forfeitLoading }
 }
 
-// Hook to create a new game
+// ─── Hook: Create Game ───────────────────────────────────────────────────
+
 export function useCreateGame() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
 
-  const checkForActiveGame = async () => {
-    const { data } = await supabase
-      .from('games')
-      .select('id')
-      .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
-      .in('status', ['waiting', 'in_progress'])
-      .limit(1)
-      .maybeSingle()
-
-    return data
-  }
-
   const createGame = async (isAI = false, aiDifficulty = 'hard', boardSize = 3, turnDuration = DEFAULT_TURN_DURATION, gameMode = 'classic') => {
     if (!user) return { error: 'Not authenticated' }
-
     setLoading(true)
-
     try {
-      // Check if user already has an active game
-      const existingGame = await checkForActiveGame()
-      if (existingGame) {
-        return { error: 'You already have an active game', existingGameId: existingGame.id }
+      const { data, error } = await gameApi.create({ isAI, aiDifficulty, boardSize, turnDuration, gameMode })
+      if (error) {
+        if (error.message?.includes('already have an active game')) {
+          return { error: error.message, existingGameId: data?.existingGameId }
+        }
+        return { error: error.message }
       }
-
-      const isDecayMode = gameMode === 'decay'
-      const isRandomStart = gameMode === 'random'
-
-      // Create initial board based on game mode
-      const initialBoard = isRandomStart
-        ? createRandomStartBoard(boardSize)
-        : createEmptyBoard(boardSize)
-
-      const { data, error } = await supabase
-        .from('games')
-        .insert({
-          player_x: user.id,
-          player_o: isAI ? null : null,
-          board: initialBoard,
-          current_turn: user.id,
-          status: isAI ? 'in_progress' : 'waiting',
-          is_ai_game: isAI,
-          ai_difficulty: isAI ? aiDifficulty : null,
-          turn_started_at: new Date().toISOString(),
-          board_size: boardSize,
-          turn_duration: turnDuration,
-          game_mode: gameMode,
-          placed_at: isDecayMode ? createEmptyPlacedAt(boardSize) : null,
-          decay_turns: isDecayMode ? DEFAULT_DECAY_TURNS : null,
-          turn_count: 0,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      return { data }
+      return { data: normalizeGame(data) }
     } catch (err) {
       return { error: err.message }
     } finally {
@@ -898,31 +223,19 @@ export function useCreateGame() {
   return { createGame, loading }
 }
 
-// Hook to join an existing game
+// ─── Hook: Join Game ─────────────────────────────────────────────────────
+
 export function useJoinGame() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
 
   const joinGame = async (gameId) => {
     if (!user) return { error: 'Not authenticated' }
-
     setLoading(true)
-
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .update({
-          player_o: user.id,
-          status: 'in_progress',
-          turn_started_at: new Date().toISOString(),
-        })
-        .eq('id', gameId)
-        .eq('status', 'waiting')
-        .select()
-        .single()
-
-      if (error) throw error
-      return { data }
+      const { data, error } = await gameApi.join(gameId)
+      if (error) return { error: error.message }
+      return { data: normalizeGame(data) }
     } catch (err) {
       return { error: err.message }
     } finally {
@@ -933,7 +246,8 @@ export function useJoinGame() {
   return { joinGame, loading }
 }
 
-// Hook to fetch available games
+// ─── Hook: Available Games ───────────────────────────────────────────────
+
 export function useAvailableGames() {
   const { user } = useAuth()
   const [games, setGames] = useState([])
@@ -941,22 +255,10 @@ export function useAvailableGames() {
 
   const fetchGames = useCallback(async () => {
     if (!user) return
-
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .select(`
-          *,
-          creator:profiles!games_player_x_fkey(id, username, avatar)
-        `)
-        .eq('status', 'waiting')
-        .neq('player_x', user.id)
-        .is('invited_player_id', null) // Exclude private invites
-        .order('created_at', { ascending: false })
-
-      console.log('Available games query result:', { data, error })
-      if (error) throw error
-      setGames(data || [])
+      const { data, error } = await gameApi.available()
+      if (error) throw new Error(error.message)
+      setGames((data || []).map(normalizeGame))
     } catch (err) {
       console.error('Error fetching games:', err)
     } finally {
@@ -966,71 +268,16 @@ export function useAvailableGames() {
 
   useEffect(() => {
     if (!user) return
-
     fetchGames()
-
-    // Subscribe to all game changes (INSERT, UPDATE, DELETE)
-    // Don't filter by status since we need to catch status changes and deletions
-    const channel = supabase
-      .channel('available-games')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'games',
-        },
-        (payload) => {
-          console.log('Game INSERT:', payload)
-          // Only refetch if the new game is public (not a private invite), waiting, and not ours
-          if (
-            payload.new.status === 'waiting' &&
-            payload.new.player_x !== user.id &&
-            !payload.new.invited_player_id
-          ) {
-            fetchGames()
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'games',
-        },
-        (payload) => {
-          console.log('Game UPDATE:', payload)
-          // Refetch if status changed or player joined
-          fetchGames()
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'games',
-        },
-        (payload) => {
-          console.log('Game DELETE:', payload)
-          // Remove deleted game from list immediately
-          setGames((prev) => prev.filter((g) => g.id !== payload.old.id))
-        }
-      )
-      .subscribe((status) => {
-        console.log('Available games channel status:', status)
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    const unsub = wsClient.on('lobby:updated', () => { fetchGames() })
+    return () => unsub()
   }, [fetchGames, user])
 
   return { games, loading, refetch: fetchGames }
 }
 
-// Hook to fetch live (in-progress) games for spectating
+// ─── Hook: Live Games ────────────────────────────────────────────────────
+
 export function useLiveGames() {
   const { user } = useAuth()
   const [games, setGames] = useState([])
@@ -1038,23 +285,10 @@ export function useLiveGames() {
 
   const fetchGames = useCallback(async () => {
     if (!user) return
-
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .select(`
-          *,
-          player_x_profile:profiles!games_player_x_fkey(id, username, avatar),
-          player_o_profile:profiles!games_player_o_fkey(id, username, avatar)
-        `)
-        .eq('status', 'in_progress')
-        .eq('is_ai_game', false)
-        .neq('player_x', user.id)
-        .neq('player_o', user.id)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setGames(data || [])
+      const { data, error } = await gameApi.live()
+      if (error) throw new Error(error.message)
+      setGames((data || []).map(normalizeGame))
     } catch (err) {
       console.error('Error fetching live games:', err)
     } finally {
@@ -1064,73 +298,16 @@ export function useLiveGames() {
 
   useEffect(() => {
     if (!user) return
-
     fetchGames()
-
-    // Subscribe to game changes
-    const channel = supabase
-      .channel('live-games')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'games',
-        },
-        (payload) => {
-          // New game started that we're not part of
-          if (
-            payload.new.status === 'in_progress' &&
-            !payload.new.is_ai_game &&
-            payload.new.player_x !== user.id &&
-            payload.new.player_o !== user.id
-          ) {
-            fetchGames()
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'games',
-        },
-        (payload) => {
-          // Game status changed or move made
-          if (!payload.new.is_ai_game && payload.new.player_x !== user.id && payload.new.player_o !== user.id) {
-            if (payload.new.status === 'in_progress') {
-              // Game started or updated - refetch to get profiles
-              fetchGames()
-            } else if (payload.new.status === 'completed') {
-              // Game ended - remove from list
-              setGames((prev) => prev.filter((g) => g.id !== payload.new.id))
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'games',
-        },
-        (payload) => {
-          setGames((prev) => prev.filter((g) => g.id !== payload.old.id))
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    const unsub = wsClient.on('live:updated', () => { fetchGames() })
+    return () => unsub()
   }, [fetchGames, user])
 
   return { games, loading, refetch: fetchGames }
 }
 
-// Hook to fetch game history
+// ─── Hook: Game History ──────────────────────────────────────────────────
+
 export function useGameHistory() {
   const { user } = useAuth()
   const [games, setGames] = useState([])
@@ -1138,37 +315,25 @@ export function useGameHistory() {
 
   useEffect(() => {
     if (!user) return
-
     const fetchHistory = async () => {
       try {
-        const { data, error } = await supabase
-          .from('games')
-          .select(`
-            *,
-            player_x_profile:profiles!games_player_x_fkey(id, username, avatar),
-            player_o_profile:profiles!games_player_o_fkey(id, username, avatar)
-          `)
-          .eq('status', 'completed')
-          .or(`player_x.eq.${user.id},player_o.eq.${user.id}`)
-          .order('completed_at', { ascending: false })
-          .limit(50)
-
-        if (error) throw error
-        setGames(data || [])
+        const { data, error } = await gameApi.history(50)
+        if (error) throw new Error(error.message)
+        setGames((data || []).map(normalizeGame))
       } catch (err) {
         console.error('Error fetching history:', err)
       } finally {
         setLoading(false)
       }
     }
-
     fetchHistory()
   }, [user])
 
   return { games, loading }
 }
 
-// Hook to fetch global leaderboard (PvP only)
+// ─── Hook: Leaderboard ──────────────────────────────────────────────────
+
 export function useLeaderboard(limit = 50, period = 'all-time') {
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1176,34 +341,12 @@ export function useLeaderboard(limit = 50, period = 'all-time') {
   const fetchLeaderboard = useCallback(async () => {
     try {
       setLoading(true)
+      const { data: completedGames, error } = await gameApi.leaderboard(period)
+      if (error) throw new Error(error.message)
 
-      // Build query for completed PvP games
-      let query = supabase
-        .from('games')
-        .select(`
-          id, player_x, player_o, winner, is_ai_game,
-          player_x_profile:profiles!games_player_x_fkey(id, username, avatar),
-          player_o_profile:profiles!games_player_o_fkey(id, username, avatar)
-        `)
-        .eq('status', 'completed')
-        .eq('is_ai_game', false)
-
-      // Add date filter for this-month
-      if (period === 'this-month') {
-        const startOfMonth = new Date()
-        startOfMonth.setDate(1)
-        startOfMonth.setHours(0, 0, 0, 0)
-        query = query.gte('completed_at', startOfMonth.toISOString())
-      }
-
-      const { data: games, error: gamesError } = await query
-
-      if (gamesError) throw gamesError
-
-      // Calculate stats per player
       const playerStats = {}
 
-      for (const game of games || []) {
+      for (const game of completedGames || []) {
         const gamePlayers = [
           { id: game.player_x, profile: game.player_x_profile },
           { id: game.player_o, profile: game.player_o_profile },
@@ -1215,52 +358,33 @@ export function useLeaderboard(limit = 50, period = 'all-time') {
               id: player.id,
               username: player.profile.username,
               avatar: player.profile.avatar,
-              pvp_wins: 0,
-              pvp_losses: 0,
-              pvp_draws: 0,
+              pvp_wins: 0, pvp_losses: 0, pvp_draws: 0,
             }
           }
 
-          if (game.winner === null) {
-            playerStats[player.id].pvp_draws++
-          } else if (game.winner === player.id) {
-            playerStats[player.id].pvp_wins++
-          } else {
-            playerStats[player.id].pvp_losses++
-          }
+          if (game.winner === null) playerStats[player.id].pvp_draws++
+          else if (game.winner === player.id) playerStats[player.id].pvp_wins++
+          else playerStats[player.id].pvp_losses++
         }
       }
 
-      // Get all player IDs to fetch full profile data (includes AI stats)
+      // Fetch full profiles
       const playerIds = Object.keys(playerStats)
-
-      if (playerIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', playerIds)
-
-        // Merge profile data with calculated PvP stats
-        if (profiles) {
-          for (const profile of profiles) {
-            if (playerStats[profile.id]) {
-              playerStats[profile.id] = {
-                ...profile,
-                // Override with calculated PvP stats for the period
-                pvp_wins: playerStats[profile.id].pvp_wins,
-                pvp_losses: playerStats[profile.id].pvp_losses,
-                pvp_draws: playerStats[profile.id].pvp_draws,
-              }
-            }
+      for (const pid of playerIds) {
+        const { data: fullProfile } = await profileApi.get(pid)
+        if (fullProfile) {
+          playerStats[pid] = {
+            ...fullProfile,
+            pvp_wins: playerStats[pid].pvp_wins,
+            pvp_losses: playerStats[pid].pvp_losses,
+            pvp_draws: playerStats[pid].pvp_draws,
           }
         }
       }
 
-      // Convert to array and sort by wins
       const sortedPlayers = Object.values(playerStats).sort(
         (a, b) => b.pvp_wins - a.pvp_wins
       )
-
       setPlayers(sortedPlayers.slice(0, limit))
     } catch (err) {
       console.error('Error fetching leaderboard:', err)
@@ -1271,26 +395,9 @@ export function useLeaderboard(limit = 50, period = 'all-time') {
 
   useEffect(() => {
     fetchLeaderboard()
-
-    const channel = supabase
-      .channel(`leaderboard-${period}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: period === 'all-time' ? 'profiles' : 'games',
-        },
-        () => {
-          fetchLeaderboard()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [fetchLeaderboard, period])
+    const unsub = wsClient.on('lobby:updated', () => { fetchLeaderboard() })
+    return () => unsub()
+  }, [fetchLeaderboard])
 
   return { players, loading, refetch: fetchLeaderboard }
 }

@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
-
-const PRESENCE_CHANNEL = 'online-users'
+import { wsClient } from '../lib/ws'
 
 const PresenceContext = createContext(null)
 
@@ -10,18 +8,8 @@ export function PresenceProvider({ children }) {
   const { user, profile } = useAuth()
   const [onlineUsers, setOnlineUsers] = useState([])
   const [isConnected, setIsConnected] = useState(false)
-  const channelRef = useRef(null)
   const currentGameIdRef = useRef(null)
-  const usernameRef = useRef(null)
-  const avatarRef = useRef(null)
 
-  // Keep username and avatar refs updated
-  useEffect(() => {
-    usernameRef.current = profile?.username
-    avatarRef.current = profile?.avatar
-  }, [profile?.username, profile?.avatar])
-
-  // Only depend on user.id, not the whole user/profile objects
   const userId = user?.id
   const username = profile?.username
   const avatar = profile?.avatar
@@ -29,72 +17,40 @@ export function PresenceProvider({ children }) {
   useEffect(() => {
     if (!userId || !username) return
 
-    const channel = supabase.channel(PRESENCE_CHANNEL, {
-      config: {
-        presence: {
-          key: userId,
-        },
-      },
+    // Connect WebSocket and join presence
+    wsClient.connect()
+    wsClient.joinPresence(userId, username, avatar || '😀')
+
+    const unsubSync = wsClient.on('presence:sync', (data) => {
+      if (data?.users) {
+        setOnlineUsers(data.users)
+      }
     })
 
-    channelRef.current = channel
+    const unsubConnected = wsClient.on('connected', () => {
+      setIsConnected(true)
+      // Re-join presence on reconnect
+      wsClient.joinPresence(userId, username, avatar || '😀')
+      if (currentGameIdRef.current) {
+        wsClient.setCurrentGame(currentGameIdRef.current)
+      }
+    })
 
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState()
-        const users = []
-
-        for (const [odlUserId, presences] of Object.entries(state)) {
-          if (presences.length > 0) {
-            users.push({
-              id: odlUserId,
-              ...presences[0],
-            })
-          }
-        }
-
-        setOnlineUsers(users)
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('User joined:', key, newPresences)
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('User left:', key, leftPresences)
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            user_id: userId,
-            username: usernameRef.current,
-            avatar: avatarRef.current,
-            online_at: new Date().toISOString(),
-            current_game_id: currentGameIdRef.current,
-          })
-          setIsConnected(true)
-        }
-      })
+    const unsubDisconnected = wsClient.on('disconnected', () => {
+      setIsConnected(false)
+    })
 
     return () => {
-      channel.untrack()
-      supabase.removeChannel(channel)
-      channelRef.current = null
-      setIsConnected(false)
+      unsubSync()
+      unsubConnected()
+      unsubDisconnected()
     }
   }, [userId, username, avatar])
 
-  // Update presence with current game status
   const setCurrentGame = useCallback(async (gameId) => {
-    if (!channelRef.current || !userId) return
-
     currentGameIdRef.current = gameId
-
-    await channelRef.current.track({
-      user_id: userId,
-      username: usernameRef.current,
-      online_at: new Date().toISOString(),
-      current_game_id: gameId,
-    })
-  }, [userId])
+    wsClient.setCurrentGame(gameId)
+  }, [])
 
   const getOtherUsers = useCallback(() => {
     if (!userId) return onlineUsers

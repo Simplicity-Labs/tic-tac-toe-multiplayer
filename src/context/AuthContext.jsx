@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { authApi, profileApi } from '../lib/api'
 
 const AuthContext = createContext({})
 
@@ -16,7 +16,6 @@ export function getCachedProfile() {
     const cached = localStorage.getItem(PROFILE_CACHE_KEY)
     if (cached) {
       const { profile, timestamp } = JSON.parse(cached)
-      // Cache valid for 30 days
       if (Date.now() - timestamp < PROFILE_CACHE_DURATION) {
         return profile
       }
@@ -56,35 +55,63 @@ function setCachedProfile(profile) {
   }
 }
 
+/** Normalize server profile (camelCase) to the shape the UI expects (snake_case) */
+function normalizeProfile(p) {
+  if (!p) return null
+  // If the profile already has snake_case keys (from cache), pass through
+  if ('pvp_wins' in p) return p
+  return {
+    id: p.id,
+    username: p.username,
+    avatar: p.avatar,
+    wins: p.wins ?? 0,
+    losses: p.losses ?? 0,
+    draws: p.draws ?? 0,
+    pvp_wins: p.pvpWins ?? 0,
+    pvp_losses: p.pvpLosses ?? 0,
+    pvp_draws: p.pvpDraws ?? 0,
+    ai_easy_wins: p.aiEasyWins ?? 0,
+    ai_easy_losses: p.aiEasyLosses ?? 0,
+    ai_easy_draws: p.aiEasyDraws ?? 0,
+    ai_medium_wins: p.aiMediumWins ?? 0,
+    ai_medium_losses: p.aiMediumLosses ?? 0,
+    ai_medium_draws: p.aiMediumDraws ?? 0,
+    ai_hard_wins: p.aiHardWins ?? 0,
+    ai_hard_losses: p.aiHardLosses ?? 0,
+    ai_hard_draws: p.aiHardDraws ?? 0,
+    forfeits: p.forfeits ?? 0,
+    is_admin: p.isAdmin ?? false,
+    is_guest: p.isGuest ?? false,
+    createdAt: p.createdAt,
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(() => getCachedProfile()) // Load from cache initially
+  const [profile, setProfile] = useState(() => getCachedProfile())
   const [loading, setLoading] = useState(true)
-  const [profileLoading, setProfileLoading] = useState(!getCachedProfile()) // Skip if cached
+  const [profileLoading, setProfileLoading] = useState(!getCachedProfile())
 
   useEffect(() => {
     let isMounted = true
 
-    // Safety timeout - reduced to 3 seconds since we have cache fallback
     const timeout = setTimeout(() => {
       if (isMounted && loading) {
         console.warn('Auth loading timeout - forcing load complete')
         setLoading(false)
         setProfileLoading(false)
       }
-    }, 3000)
+    }, 5000)
 
-    // Get initial session
     const initSession = async () => {
       try {
-        // Start session fetch and warm up Supabase in parallel
-        const sessionPromise = supabase.auth.getSession()
+        const { data, error } = await authApi.getSession()
 
-        const { data: { session }, error } = await sessionPromise
-
-        if (error) {
-          console.error('Error getting session:', error)
+        if (error || !data?.user) {
           if (isMounted) {
+            setUser(null)
+            setProfile(null)
+            setCachedProfile(null)
             setLoading(false)
             setProfileLoading(false)
           }
@@ -92,27 +119,20 @@ export function AuthProvider({ children }) {
         }
 
         if (isMounted) {
-          setUser(session?.user ?? null)
+          setUser(data.user)
         }
 
-        if (session?.user && isMounted) {
-          // If we have cached profile for this user, use it immediately
+        if (data.user && isMounted) {
           const cached = getCachedProfile()
-          if (cached && cached.id === session.user.id) {
+          if (cached && cached.id === data.user.id) {
             setProfile(cached)
             setLoading(false)
             setProfileLoading(false)
-            // Fetch fresh data in background (don't await)
-            fetchProfile(session.user.id, true)
+            // Refresh in background
+            fetchProfile(data.user.id, true)
           } else {
-            // No cache - need to fetch, but with short timeout
-            await fetchProfile(session.user.id, false)
+            await fetchProfile(data.user.id, false)
           }
-        } else if (isMounted) {
-          setProfile(null)
-          setCachedProfile(null)
-          setLoading(false)
-          setProfileLoading(false)
         }
       } catch (error) {
         console.error('Error in session init:', error)
@@ -125,60 +145,29 @@ export function AuthProvider({ children }) {
 
     initSession()
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setProfileLoading(true) // Set before user to prevent flash
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setProfileLoading(false)
-        setLoading(false)
-      }
-    })
-
     return () => {
       isMounted = false
       clearTimeout(timeout)
-      subscription.unsubscribe()
     }
   }, [])
 
   async function fetchProfile(userId, isBackground = false) {
-    console.log('Fetching profile for user:', userId, isBackground ? '(background)' : '')
     try {
-      // Add timeout to prevent hanging - shorter for background refresh
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), isBackground ? 8000 : 5000)
-      )
+      const { data, error } = await profileApi.get(userId)
 
-      const fetchPromise = supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
-
-      console.log('Profile fetch result:', { data, error })
-
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.message !== 'Profile not found') {
         console.error('Error fetching profile:', error)
       }
 
-      if (data) {
-        setProfile(data)
-        setCachedProfile(data)
+      const normalized = normalizeProfile(data)
+
+      if (normalized) {
+        setProfile(normalized)
+        setCachedProfile(normalized)
       } else if (!isBackground) {
-        // Profile not found in DB - try expired cache as fallback for returning users
         const expiredCache = getExpiredCachedProfile()
         if (expiredCache && expiredCache.id === userId) {
-          console.log('Using expired cache as fallback for returning user')
           setProfile(expiredCache)
-          // Refresh the cache timestamp since we're using it
           setCachedProfile(expiredCache)
         } else {
           setProfile(null)
@@ -187,11 +176,9 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       console.error('Error fetching profile:', error.message)
-      // On error, try expired cache as fallback
       if (!isBackground) {
         const expiredCache = getExpiredCachedProfile()
         if (expiredCache && expiredCache.id === userId) {
-          console.log('Using expired cache as fallback after fetch error')
           setProfile(expiredCache)
           setCachedProfile(expiredCache)
         } else {
@@ -207,43 +194,51 @@ export function AuthProvider({ children }) {
   }
 
   async function signUp(email, password) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`,
-      },
-    })
+    const name = email.split('@')[0]
+    const { data, error } = await authApi.signUp(email, password, name)
+    if (!error && data) {
+      // Auto-login after signup with BetterAuth
+      setUser(data.user || data)
+      if (data.user) {
+        await fetchProfile(data.user.id, false)
+      }
+    }
     return { data, error }
   }
 
   async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { data, error } = await authApi.signIn(email, password)
+    if (!error && data) {
+      const u = data.user || data
+      setUser(u)
+      setProfileLoading(true)
+      await fetchProfile(u.id, false)
+    }
     return { data, error }
   }
 
   async function signInAnonymously() {
-    const { data, error } = await supabase.auth.signInAnonymously()
+    const { data, error } = await authApi.signInAnonymously()
+    if (!error && data) {
+      const u = data.user || data
+      setUser(u)
+      setProfileLoading(true)
+      // Profile will be created in the username step
+      setProfileLoading(false)
+    }
     return { data, error }
   }
 
   async function linkEmailToAnonymous(email, password) {
-    // Convert anonymous account to a permanent one
-    const { data, error } = await supabase.auth.updateUser({
-      email,
-      password,
-    })
-    if (!error && data.user) {
-      setUser(data.user)
+    const { data, error } = await authApi.linkEmail(email, password)
+    if (!error && data) {
+      setUser(data.user || data)
     }
     return { data, error }
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await authApi.signOut()
     if (!error) {
       setUser(null)
       setProfile(null)
@@ -253,52 +248,39 @@ export function AuthProvider({ children }) {
   }
 
   async function resetPassword(email) {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
-    return { data, error }
+    return authApi.resetPassword(email)
   }
 
   async function updatePassword(newPassword) {
-    const { data, error } = await supabase.auth.updateUser({
-      password: newPassword,
-    })
-    return { data, error }
+    return authApi.updatePassword(newPassword)
   }
 
   async function createProfile(username, avatar = '😀') {
     if (!user) return { error: { message: 'Not authenticated' } }
 
-    const { data, error } = await supabase.from('profiles').insert({
-      id: user.id,
-      username,
-      avatar,
-    }).select().single()
+    const { data, error } = await profileApi.create(username, avatar)
+    const normalized = normalizeProfile(data)
 
-    if (!error && data) {
-      setProfile(data)
-      setCachedProfile(data)
+    if (!error && normalized) {
+      setProfile(normalized)
+      setCachedProfile(normalized)
     }
 
-    return { data, error }
+    return { data: normalized, error }
   }
 
   async function updateProfile(updates) {
     if (!user) return { error: { message: 'Not authenticated' } }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single()
+    const { data, error } = await profileApi.update(user.id, updates)
+    const normalized = normalizeProfile(data)
 
-    if (!error && data) {
-      setProfile(data)
-      setCachedProfile(data)
+    if (!error && normalized) {
+      setProfile(normalized)
+      setCachedProfile(normalized)
     }
 
-    return { data, error }
+    return { data: normalized, error }
   }
 
   const refreshProfile = useCallback(async () => {
@@ -312,7 +294,7 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     profileLoading,
-    isAnonymous: user?.is_anonymous ?? false,
+    isAnonymous: user?.isAnonymous ?? false,
     isAdmin: profile?.is_admin ?? false,
     signUp,
     signIn,

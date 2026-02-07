@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
-import { createEmptyBoard } from '../lib/gameLogic'
+import { wsClient } from '../lib/ws'
 
 const INVITE_TIMEOUT = 30000 // 30 seconds
 
@@ -11,14 +10,11 @@ export function InvitationsProvider({ children }) {
   const { user, profile } = useAuth()
   const [pendingInvite, setPendingInvite] = useState(null)
   const [sentInvite, setSentInvite] = useState(null)
-  const channelRef = useRef(null)
   const timeoutRef = useRef(null)
 
-  // Use refs to avoid stale closures in event handlers
   const pendingInviteRef = useRef(pendingInvite)
   const sentInviteRef = useRef(sentInvite)
 
-  // Keep refs in sync with state
   useEffect(() => {
     pendingInviteRef.current = pendingInvite
   }, [pendingInvite])
@@ -27,208 +23,85 @@ export function InvitationsProvider({ children }) {
     sentInviteRef.current = sentInvite
   }, [sentInvite])
 
-  // Listen for incoming invites on user-specific channel
+  // Listen for incoming invites via WebSocket
   useEffect(() => {
     if (!user) return
 
-    console.log('Setting up invite channel for user:', user.id)
+    const unsubReceived = wsClient.on('invite:received', (payload) => {
+      if (pendingInviteRef.current) return // Already have a pending invite
 
-    const channel = supabase.channel(`invites:${user.id}`, {
-      config: {
-        broadcast: { ack: true },
-      },
+      setPendingInvite({
+        ...payload,
+        receivedAt: Date.now(),
+      })
+
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => {
+        setPendingInvite(null)
+      }, INVITE_TIMEOUT)
     })
 
-    channel
-      .on('broadcast', { event: 'invite' }, ({ payload }) => {
-        console.log('Received invite:', payload)
-        if (pendingInviteRef.current) {
-          console.log('Already have pending invite, ignoring')
-          return
-        }
-
-        setPendingInvite({
-          ...payload,
-          receivedAt: Date.now(),
-        })
-
-        clearTimeout(timeoutRef.current)
-        timeoutRef.current = setTimeout(() => {
-          setPendingInvite(null)
-        }, INVITE_TIMEOUT)
-      })
-      .on('broadcast', { event: 'invite-response' }, async ({ payload }) => {
-        console.log('Received invite-response:', payload)
-        const currentSentInvite = sentInviteRef.current
-        console.log('Current sent invite:', currentSentInvite)
-        if (currentSentInvite && payload.gameId === currentSentInvite.gameId) {
-          if (payload.accepted) {
-            console.log('Invite accepted!')
-            setSentInvite((prev) => (prev ? { ...prev, accepted: true } : null))
-          } else {
-            console.log('Invite declined!')
-            // Set declined state FIRST so UI can show "declined" reason
-            setSentInvite((prev) =>
-              prev ? { ...prev, declined: true } : null
-            )
-
-            // Then delete the game (sender has permission as creator)
-            console.log('Deleting declined game...')
-            const { error } = await supabase
-              .from('games')
-              .delete()
-              .eq('id', payload.gameId)
-            if (error) {
-              console.error('Failed to delete declined game:', error)
-            } else {
-              console.log('Deleted declined game:', payload.gameId)
-            }
-            setTimeout(() => setSentInvite(null), 3000)
-          }
+    const unsubResponse = wsClient.on('invite:response', (payload) => {
+      const currentSentInvite = sentInviteRef.current
+      if (currentSentInvite && payload.gameId === currentSentInvite.gameId) {
+        if (payload.accepted) {
+          setSentInvite((prev) => (prev ? { ...prev, accepted: true } : null))
         } else {
-          console.log('No matching sent invite found')
+          setSentInvite((prev) => (prev ? { ...prev, declined: true } : null))
+          setTimeout(() => setSentInvite(null), 3000)
         }
-      })
-      .on('broadcast', { event: 'invite-cancelled' }, ({ payload }) => {
-        console.log('Received invite-cancelled:', payload)
-        const currentPendingInvite = pendingInviteRef.current
-        if (currentPendingInvite && payload.gameId === currentPendingInvite.gameId) {
-          clearTimeout(timeoutRef.current)
-          setPendingInvite(null)
-        }
-      })
-      .subscribe((status) => {
-        console.log('Invite channel status:', status, 'for user:', user.id)
-      })
+      }
+    })
 
-    channelRef.current = channel
+    const unsubCancelled = wsClient.on('invite:cancelled', (payload) => {
+      const currentPendingInvite = pendingInviteRef.current
+      if (currentPendingInvite && payload.gameId === currentPendingInvite.gameId) {
+        clearTimeout(timeoutRef.current)
+        setPendingInvite(null)
+      }
+    })
+
+    // Also listen for invite:sent confirmation
+    const unsubSent = wsClient.on('invite:sent', (payload) => {
+      // The sent invite state is already set by sendInvite below
+    })
 
     return () => {
-      console.log('Cleaning up invite channel for user:', user.id)
       clearTimeout(timeoutRef.current)
-      supabase.removeChannel(channel)
+      unsubReceived()
+      unsubResponse()
+      unsubCancelled()
+      unsubSent()
     }
   }, [user])
 
-  // Helper to send a broadcast message reliably
-  const sendBroadcast = useCallback(async (targetUserId, event, payload) => {
-    const channelName = `invites:${targetUserId}`
-    const targetChannel = supabase.channel(channelName, {
-      config: {
-        broadcast: { ack: true },
-      },
-    })
-
-    return new Promise((resolve, reject) => {
-      let timeoutId = null
-      let settled = false
-
-      const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId)
-        setTimeout(() => {
-          supabase.removeChannel(targetChannel)
-        }, 1000)
-      }
-
-      targetChannel.subscribe((status) => {
-        if (settled) return
-
-        if (status === 'SUBSCRIBED') {
-          console.log(`Sending ${event} to ${targetUserId}`)
-          targetChannel
-            .send({
-              type: 'broadcast',
-              event,
-              payload,
-            })
-            .then((result) => {
-              if (settled) return
-              settled = true
-              console.log(`Broadcast ${event} result:`, result)
-              cleanup()
-              resolve()
-            })
-            .catch((err) => {
-              if (settled) return
-              settled = true
-              console.error(`Broadcast ${event} error:`, err)
-              cleanup()
-              reject(err)
-            })
-        } else if (status === 'CHANNEL_ERROR') {
-          if (settled) return
-          settled = true
-          cleanup()
-          reject(new Error('Channel subscription failed'))
-        }
-      })
-
-      timeoutId = setTimeout(() => {
-        if (settled) return
-        settled = true
-        console.error(`Broadcast ${event} timeout`)
-        supabase.removeChannel(targetChannel)
-        reject(new Error('Channel subscription timeout'))
-      }, 5000)
-    })
-  }, [])
-
   const sendInvite = useCallback(
-    async (targetUser, boardSize = 3, turnDuration = 30) => {
+    async (targetUser, boardSize = 3, turnDuration = 30, gameMode = 'classic') => {
       if (!user || !profile) return { error: 'Not authenticated' }
 
-      console.log('Creating invite game for target user:', targetUser.id, 'board size:', boardSize, 'turn duration:', turnDuration)
-      const { data: game, error: gameError } = await supabase
-        .from('games')
-        .insert({
-          player_x: user.id,
-          player_o: null,
-          board: createEmptyBoard(boardSize),
-          current_turn: user.id,
-          status: 'waiting',
-          is_ai_game: false,
-          turn_started_at: new Date().toISOString(),
-          invited_player_id: targetUser.id, // Mark as private invite
-          board_size: boardSize,
-          turn_duration: turnDuration,
-        })
-        .select()
-        .single()
+      wsClient.sendInvite(targetUser.id, boardSize, turnDuration, gameMode)
 
-      if (gameError) {
-        console.error('Error creating invite game:', gameError)
-        return { error: gameError.message }
-      }
-      console.log('Created invite game:', game)
-
-      try {
-        await sendBroadcast(targetUser.id, 'invite', {
-          gameId: game.id,
-          boardSize: boardSize,
-          turnDuration: turnDuration,
-          from: {
-            id: user.id,
-            username: profile.username,
-            avatar: profile.avatar,
-          },
-        })
-      } catch (err) {
-        console.error('Failed to send invite broadcast:', err)
-        await supabase.from('games').delete().eq('id', game.id)
-        return { error: 'Failed to send invite' }
-      }
-
+      // Set a temporary sent invite - the server will confirm with invite:sent
+      // We track it optimistically
       setSentInvite({
-        gameId: game.id,
-        boardSize: boardSize,
-        turnDuration: turnDuration,
+        gameId: null, // Will be set by server response or handled by gameId from accept
+        boardSize,
+        turnDuration,
         to: targetUser,
         sentAt: Date.now(),
       })
 
-      return { data: game }
+      // Listen for the sent confirmation to get the gameId
+      const unsub = wsClient.on('invite:sent', (payload) => {
+        setSentInvite((prev) =>
+          prev ? { ...prev, gameId: payload.gameId } : null
+        )
+        unsub()
+      })
+
+      return { data: true }
     },
-    [user, profile, sendBroadcast]
+    [user, profile]
   )
 
   const acceptInvite = useCallback(async () => {
@@ -237,58 +110,23 @@ export function InvitationsProvider({ children }) {
     clearTimeout(timeoutRef.current)
     const inviteToAccept = pendingInvite
 
-    const { data, error } = await supabase
-      .from('games')
-      .update({
-        player_o: user.id,
-        status: 'in_progress',
-        turn_started_at: new Date().toISOString(),
-      })
-      .eq('id', inviteToAccept.gameId)
-      .eq('status', 'waiting')
-      .select()
-      .single()
-
-    if (error) {
-      setPendingInvite(null)
-      return { error: error.message }
-    }
-
-    try {
-      await sendBroadcast(inviteToAccept.from.id, 'invite-response', {
-        gameId: inviteToAccept.gameId,
-        accepted: true,
-      })
-    } catch (err) {
-      console.error('Failed to send accept notification:', err)
-    }
+    wsClient.acceptInvite(inviteToAccept.gameId)
 
     const gameId = inviteToAccept.gameId
     setPendingInvite(null)
 
-    return { data, gameId }
-  }, [pendingInvite, user, sendBroadcast])
+    return { data: true, gameId }
+  }, [pendingInvite, user])
 
   const declineInvite = useCallback(async () => {
     if (!pendingInvite) return
 
     clearTimeout(timeoutRef.current)
     const inviteToDecline = pendingInvite
-
     setPendingInvite(null)
 
-    // Note: The game will be deleted by the sender when they receive the decline notification
-    // (they have RLS permission as the game creator, the decliner does not)
-
-    try {
-      await sendBroadcast(inviteToDecline.from.id, 'invite-response', {
-        gameId: inviteToDecline.gameId,
-        accepted: false,
-      })
-    } catch (err) {
-      console.error('Failed to send decline notification:', err)
-    }
-  }, [pendingInvite, sendBroadcast])
+    wsClient.declineInvite(inviteToDecline.gameId, inviteToDecline.from.id)
+  }, [pendingInvite])
 
   const cancelInvite = useCallback(async () => {
     if (!sentInvite) return
@@ -296,16 +134,10 @@ export function InvitationsProvider({ children }) {
     const inviteToCancel = sentInvite
     setSentInvite(null)
 
-    await supabase.from('games').delete().eq('id', inviteToCancel.gameId)
-
-    try {
-      await sendBroadcast(inviteToCancel.to.id, 'invite-cancelled', {
-        gameId: inviteToCancel.gameId,
-      })
-    } catch (err) {
-      console.error('Failed to send cancel notification:', err)
+    if (inviteToCancel.gameId) {
+      wsClient.cancelInvite(inviteToCancel.gameId, inviteToCancel.to.id)
     }
-  }, [sentInvite, sendBroadcast])
+  }, [sentInvite])
 
   const clearSentInvite = useCallback(() => {
     setSentInvite(null)

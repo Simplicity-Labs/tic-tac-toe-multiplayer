@@ -1,12 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
+// ⚠️ DEPRECATED — Supabase has been replaced with self-hosted backend
+// This file is kept as a stub to prevent import errors during migration
+// All Supabase functionality is now in api.ts and ws.ts
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+console.warn('supabase.js is deprecated — use api.ts and ws.ts instead')
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error(
-    'Missing Supabase environment variables. Please check your .env file.'
-  )
-}
-
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
+export const supabase = null
